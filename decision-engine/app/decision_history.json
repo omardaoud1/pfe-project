@@ -1,0 +1,18 @@
+[
+  {
+    "incident_key": "f351d654eb10bba62330bc6c2d467340034dcb8cc9179900b2560b9e01052f07",
+    "action": "restart_redis",
+    "confidence": 0.7,
+    "safety_level": 3,
+    "success": true,
+    "timestamp": "2026-02-20T11:43:01.302916"
+  },
+  {
+    "incident_key": "f351d654eb10bba62330bc6c2d467340034dcb8cc9179900b2560b9e01052f07",
+    "action": "restart_redis",
+    "confidence": 1.0,
+    "safety_level": 3,
+    "success": true,
+    "timestamp": "2026-02-20T11:48:02.191858"
+  }
+]

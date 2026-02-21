@@ -1,0 +1,11 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: "n8n"
+
+receivers:
+  - name: "n8n"
+    webhook_configs:
+      - url: "http://n8n:5678/webhook/prod/alerts/intake"
+

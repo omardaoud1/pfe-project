@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+
+# n8n
+.n8n/

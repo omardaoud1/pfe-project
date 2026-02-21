@@ -1,0 +1,58 @@
+groups:
+- name: host-alerts
+  rules:
+  - alert: HostDown
+    expr: up == 0
+    for: 30s
+    labels:
+      severity: critical
+    annotations:
+      summary: "Host is down"
+      description: "Prometheus target is not reachable"
+  - alert: DiskUsageHigh
+    expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.2
+    for: 10s
+    labels:
+      severity: warning
+    annotations:
+      summary: "Disk usage is high"
+      description: "Root filesystem has less than 20% free space"
+  - alert: RedisDown
+    expr: redis_up == 0
+    for: 10s
+    labels:
+      severity: critical
+      service: redis
+    annotations:
+      summary: "Redis is down"
+      description: "Redis exporter reports Redis is not reachable"
+  - alert: RabbitMQDown
+    expr: rabbitmq_up == 0
+    for: 10s
+    labels:
+      severity: critical
+      service: rabbitmq
+    annotations:
+      summary: "RabbitMQ is down"
+      description: "RabbitMQ exporter reports service is not reachable"
+
+  - alert: RabbitMQQueueHigh
+    expr: rabbitmq_queue_messages > 100
+    for: 10s
+    labels:
+      severity: warning
+      service: rabbitmq
+    annotations:
+      summary: "RabbitMQ queue is high"
+      description: "Queue has more than 100 messages"
+
+  - alert: GatewayDown
+    expr: probe_success == 0
+    for: 10s
+    labels:
+      severity: critical
+      service: gateway
+    annotations:
+      summary: "Gateway is down"
+      description: "HTTP probe failed for gateway"
+
