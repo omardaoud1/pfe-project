@@ -1,0 +1,181 @@
+{
+  "name": "Workflow 1 – Alert Intake",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/prod/alerts/intake",
+        "options": {
+          "noResponseBody": true,
+          "responseCode": {
+            "values": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "10fab639-5d58-408c-95b7-771db5d35d7b",
+      "name": "PROD – Alertmanager Intake",
+      "webhookId": "db9adb75-ac74-4064-a255-9d1a180bb39a"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4d3a1c73-fc91-42de-a5e6-a7bb12008496",
+              "leftValue": "={{ !!$json.body.alerts?.[0]?.labels?.alertname }}\n",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "b29672be-9c56-45af-9e61-1e769d175304",
+      "name": "Validate Alert"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cc4b53cb-9d42-4e78-a362-06df409b26b3",
+              "name": "incident_type",
+              "value": "={{ $json.body.alerts[0].labels.alertname }}",
+              "type": "string"
+            },
+            {
+              "id": "b9fea08b-34f1-43d7-8374-d8f572485e74",
+              "name": "=service",
+              "value": "={{ $json.body.alerts[0].labels.service || 'unknown' }}",
+              "type": "string"
+            },
+            {
+              "id": "d11b9276-d4d1-4807-99a5-b225666f56aa",
+              "name": "severity",
+              "value": "={{ $json.body.alerts[0].labels.severity || 'unknown' }}",
+              "type": "string"
+            },
+            {
+              "id": "b5cc9eac-00db-4982-bdf7-e072bb063bad",
+              "name": "timestamp",
+              "value": "={{ $json.body.alerts[0].startsAt }}",
+              "type": "string"
+            },
+            {
+              "id": "1e3951e3-3a0c-431a-b92b-c9eff94e9c93",
+              "name": "source",
+              "value": "alertmanager",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        416,
+        -96
+      ],
+      "id": "fea60324-55ad-43c7-8e0c-a6466f243239",
+      "name": "Normalize Incident"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://n8n:5678/webhook/prod/workflow2/input",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"incident_type\": \"{{ $json.incident_type }}\",\n  \"service\": \"{{ $json.service }}\",\n  \"severity\": \"{{ $json.severity }}\",\n  \"timestamp\": \"{{ $json.timestamp }}\",\n  \"source\": \"{{ $json.source }}\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        624,
+        -96
+      ],
+      "id": "1cdf669f-3760-4733-a459-53281c2c6385",
+      "name": "Forward Incident"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "PROD – Alertmanager Intake": {
+      "main": [
+        [
+          {
+            "node": "Validate Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Alert": {
+      "main": [
+        [
+          {
+            "node": "Normalize Incident",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Incident": {
+      "main": [
+        [
+          {
+            "node": "Forward Incident",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "d9bbdcac-6558-47ed-86e4-047a56babe3d",
+  "meta": {
+    "instanceId": "550c9b25708f97d5ede5d8bc17a0f9f166bd90e8652782284824d451446c7bbc"
+  },
+  "id": "FVSeQJdr2QLkojW30mBk-",
+  "tags": []
+}

@@ -1,0 +1,286 @@
+{
+  "name": "workflow 4-execute SF 2",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "sl2-approval",
+        "options": {
+          "responseCode": {
+            "values": {}
+          },
+          "responseData": "={   \"status\": \"received\",   \"message\": \"Approval decision received\" }"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ec3ef877-b9b5-4516-b2b1-3326a8c8c898",
+      "name": "Webhook",
+      "webhookId": "cc0a2443-4304-41cb-ab85-44e92f0f7cc1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2b45a519-75a7-486f-aef1-5977009e8218",
+              "name": "decision_id",
+              "value": "={{ ($json.query.decision_id || '').toString().replace(/^=/, '') }}",
+              "type": "string"
+            },
+            {
+              "id": "c3ba338e-c93c-4a99-915e-a1023399b53e",
+              "name": "incident_key",
+              "value": "={{ ($json.query.incident_key || '').toString().replace(/^=/, '') }}",
+              "type": "string"
+            },
+            {
+              "id": "853e2788-7064-4b6d-a054-1dc3b44866a7",
+              "name": "action",
+              "value": "={{ ($json.query.action || '').toString().replace(/^=/, '') }}",
+              "type": "string"
+            },
+            {
+              "id": "acac3db5-0792-4ed8-9e84-4e02fda56e16",
+              "name": "safety_level",
+              "value": "={{ ($json.query.safety_level || '').toString().replace(/^=/, '') }}",
+              "type": "string"
+            },
+            {
+              "id": "32ed4eea-b417-446a-ac2b-0fa458e12afa",
+              "name": "confidence",
+              "value": "={{ ($json.query.confidence || '').toString().replace(/^=/, '') }}",
+              "type": "string"
+            },
+            {
+              "id": "7638d5cb-ba7b-4689-8ab4-4c1ba172edef",
+              "name": "approval_result",
+              "value": "={{ ($json.query.result || '').toString().replace(/^=/, '') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "332818f2-21de-407b-9d8c-a9642822348b",
+      "name": "structure data"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e938a1e1-6afb-40f4-b682-a6dbcac97232",
+              "leftValue": "={{ $json.approval_result }}",
+              "rightValue": "approve",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "2ca32468-0d0a-4beb-b7a6-1b28724b6759",
+      "name": "approval result"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://action-executor:8001/execute",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"decision_id\": \"{{ $json.decision_id }}\",\n  \"action\": \"{{ $json.action }}\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        752,
+        -64
+      ],
+      "id": "b1a6b121-5358-4b8f-9c8a-58b902287ebf",
+      "name": "Auto_Execution"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://decision-engine:8000/execution-result",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "incident_key",
+              "value": "={{ $node[\"structure data\"].json.incident_key }}"
+            },
+            {
+              "name": "action",
+              "value": "={{ $json.action }}"
+            },
+            {
+              "name": "=confidence",
+              "value": "={{ $node[\"structure data\"].json.confidence }}"
+            },
+            {
+              "name": "safety_level",
+              "value": "={{ $node[\"structure data\"].json.safety_level }}"
+            },
+            {
+              "name": "execution_status",
+              "value": "={{ $json.status === 'success' ? 'success' : 'failed' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1008,
+        -32
+      ],
+      "id": "0277092f-0ecb-4919-9939-09fb2462aa06",
+      "name": "Report_Execution_Result"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#alerts",
+          "mode": "name"
+        },
+        "text": "=🚨 *Automated Action Executed*\n\n• *Action:* {{ $node[\"Auto_Execution\"].json.action }}\n• *Safety Level:* {{ $node[\"structure data\"].json.safety_level }}\n• *Confidence:* {{ $node[\"structure data\"].json.confidence }}\n• *Status:* {{ $node[\"Auto_Execution\"].json.status }}\n• *Decision ID:* {{ $node[\"structure data\"].json.decision_id }}\n• *Incident Key:* {{ $node[\"structure data\"].json.incident_key }}\n\n🤖 Executed automatically by *n8n Workflow 3*\n",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1232,
+        0
+      ],
+      "id": "d4f10204-cb45-463e-9a6e-76e8cf4c1173",
+      "name": "Send-Result",
+      "webhookId": "f114225c-62f0-43df-be28-7a61e50e8714",
+      "retryOnFail": false,
+      "credentials": {
+        "slackApi": {
+          "id": "731AsEBCeBbQ6caf",
+          "name": "Slack account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "structure data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "structure data": {
+      "main": [
+        [
+          {
+            "node": "approval result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "approval result": {
+      "main": [
+        [
+          {
+            "node": "Auto_Execution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auto_Execution": {
+      "main": [
+        [
+          {
+            "node": "Report_Execution_Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report_Execution_Result": {
+      "main": [
+        [
+          {
+            "node": "Send-Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "2cb20433-9b07-4ed0-a284-c25c16b949c0",
+  "meta": {
+    "instanceId": "550c9b25708f97d5ede5d8bc17a0f9f166bd90e8652782284824d451446c7bbc"
+  },
+  "id": "ssxJ23zfYR8n_hkTUO1Do",
+  "tags": []
+}

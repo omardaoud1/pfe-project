@@ -1,0 +1,329 @@
+{
+  "name": "workflow 3 - execution",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "workflow-3/decision",
+        "options": {
+          "responseCode": {
+            "values": {}
+          },
+          "responseData": "={   \"status\": \"received\",   \"message\": \"Decision accepted for execution\" }"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ee45941f-234c-4e22-a82f-de0ee3b51156",
+      "name": "Decision Receiver",
+      "webhookId": "986b0a9d-d811-47ef-99d5-db11b11957dd"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a2417a4c-fa84-40e5-85ce-7394016500d8",
+              "leftValue": "={{ $json.body.action }}",
+              "rightValue": "noop",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "b7329500-b948-49ab-b7f5-c7e1a4f9525b",
+      "name": "Validate_action"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://action-executor:8001/execute",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"decision_id\": \"{{ $json.body.decision_id }}\",\n  \"action\": \"{{ $json.body.action }}\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        800,
+        -128
+      ],
+      "id": "55929109-800f-4590-a065-3ef73d0c27d9",
+      "name": "Auto_Execution"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://decision-engine:8000/execution-result",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "incident_key",
+              "value": "={{ $node[\"Decision Receiver\"].json.body.incident_key }}"
+            },
+            {
+              "name": "action",
+              "value": "={{ $json.action }}"
+            },
+            {
+              "name": "=confidence",
+              "value": "={{ $node[\"Decision Receiver\"].json.body.confidence }}"
+            },
+            {
+              "name": "safety_level",
+              "value": "={{ $node[\"Decision Receiver\"].json.body.safety_level }}"
+            },
+            {
+              "name": "execution_status",
+              "value": "={{ $json.status === 'success' ? 'success' : 'failed' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1104,
+        -128
+      ],
+      "id": "c7179262-2849-4cb7-9086-0477cd07cebb",
+      "name": "Report_Execution_Result"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#alerts",
+          "mode": "name"
+        },
+        "text": "=🚨 *Automated Action Executed*\n\n• *Action:* {{ $node[\"Auto_Execution\"].json.action }}\n• *Safety Level:* {{ $node[\"Decision Receiver\"].json.body.safety_level }}\n• *Confidence:* {{ $node[\"Decision Receiver\"].json.body.confidence }}\n• *Status:* {{ $node[\"Auto_Execution\"].json.status }}\n• *Decision ID:* {{ $node[\"Decision Receiver\"].json.body.decision_id }}\n• *Incident Key:* {{ $node[\"Decision Receiver\"].json.body.incident_key }}\n\n🤖 Executed automatically by *n8n Workflow 3*\n",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1392,
+        0
+      ],
+      "id": "83a5fce3-8f55-420f-9866-9d697cbed663",
+      "name": "Send-Result",
+      "webhookId": "f114225c-62f0-43df-be28-7a61e50e8714",
+      "retryOnFail": false,
+      "credentials": {
+        "slackApi": {
+          "id": "731AsEBCeBbQ6caf",
+          "name": "Slack account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8f2c2aa3-2718-4689-b5b8-688adf8aed63",
+              "leftValue": "={{ $json.body.safety_level }}",
+              "rightValue": 3,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        -64
+      ],
+      "id": "0835025e-e5c0-4559-af7d-6771c17c0424",
+      "name": "Check_Safety_Level"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"decision_id\": \"={{ $json.body.decision_id }}\",\n  \"incident_key\": \"={{ $json.body.incident_key }}\",\n  \"action\": \"={{ $json.body.action }}\",\n  \"action_params\": \"={{ $json.body.action_params }}\",\n  \"safety_level\": \"={{ $json.body.safety_level }}\",\n  \"confidence\": \"={{ $json.body.confidence }}\",\n  \"reason\": \"={{ $json.body.reason }}\",\n  \"decided_at\": \"={{ $json.body.decided_at }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        736,
+        144
+      ],
+      "id": "5e33dbbc-1a20-438b-b9fa-a1fa356430c1",
+      "name": "clean data"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#validate-action",
+          "mode": "name"
+        },
+        "text": "=🚨 *Action Approval Required (Safety Level 2)*\n\n🆔 Decision ID: {{ $json.decision_id }}\n📌 Incident Key: {{ $json.incident_key }}\n\n⚙️ Action:\n• Name: {{ $json.action }}\n• Params: {{ JSON.stringify($json.action_params, null, 2) }}\n\n📊 Confidence: {{ $json.confidence }}\n🛡️ Safety Level: {{ $json.safety_level }}\n\n🧠 Reason:\n{{ $json.reason }}\n\n⏱️ Decided At:\n{{ $json.decided_at }}\n\n👉 Approve:\nhttp://localhost:5678/webhook/sl2-approval?result=approve&decision_id={{ $json.decision_id }}&incident_key={{ $json.incident_key }}&action={{ $json.action }}&safety_level={{ $json.safety_level }}&confidence={{ $json.confidence }}\n\n❌ Reject:\nhttp://localhost:5678/webhook/sl2-approval?result=reject&decision_id={{ $json.decision_id }}&incident_key={{ $json.incident_key }}&action={{ $json.action }}&safety_level={{ $json.safety_level }}&confidence={{ $json.confidence }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        944,
+        144
+      ],
+      "id": "e8783673-2cb9-49e4-94f7-0d750a29d969",
+      "name": "Send a message",
+      "webhookId": "a6a0b7ca-f3d9-4a89-afdd-c4dbc693cb89",
+      "credentials": {
+        "slackApi": {
+          "id": "731AsEBCeBbQ6caf",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Decision Receiver": {
+      "main": [
+        [
+          {
+            "node": "Validate_action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate_action": {
+      "main": [
+        [
+          {
+            "node": "Check_Safety_Level",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auto_Execution": {
+      "main": [
+        [
+          {
+            "node": "Report_Execution_Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report_Execution_Result": {
+      "main": [
+        [
+          {
+            "node": "Send-Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check_Safety_Level": {
+      "main": [
+        [
+          {
+            "node": "Auto_Execution",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "clean data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "clean data": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "9f9a6be9-3029-4058-a37c-7923510b55d4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "550c9b25708f97d5ede5d8bc17a0f9f166bd90e8652782284824d451446c7bbc"
+  },
+  "id": "U5mZPLZImrRZ8WvBAwdAY",
+  "tags": []
+}

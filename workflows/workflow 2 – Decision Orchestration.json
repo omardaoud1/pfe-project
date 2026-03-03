@@ -1,0 +1,216 @@
+{
+  "name": "workflow 2 – Decision Orchestration",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://n8n:5678/webhook/workflow-3/decision",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Internal-Token",
+              "value": "<same-secret-as-workflow-3>"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"decision_id\": \"{{ $json.decision_id }}\",\n  \"incident_key\": \"{{ $json.incident_key }}\",\n  \"action\": \"{{ $json.action }}\",\n  \"action_params\": {{ JSON.stringify($json.action_params || {}) }},\n  \"safety_level\": {{ $json.safety_level }},\n  \"confidence\": {{ $json.confidence }},\n  \"reason\": \"{{ $json.reason }}\",\n  \"decided_at\": \"{{ $json.decided_at }}\"\n}\n",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        704,
+        -112
+      ],
+      "id": "50b7d76f-01eb-48ee-96b2-548c609b320f",
+      "name": "Forward_Decision"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "90f39e56-e0a0-44a3-8304-9c9bf5018d91",
+              "leftValue": "{{$json.action}}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "a765459e-5507-46aa-b667-aecbfb895286",
+              "leftValue": "={{ $json.confidence }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "6a8bec17-7898-4c41-b466-a577ee4bb0fa",
+              "leftValue": "={{$json.safety_level}}",
+              "rightValue": 3,
+              "operator": {
+                "type": "number",
+                "operation": "lte"
+              }
+            },
+            {
+              "id": "74019425-807e-423b-954d-249791c0624b",
+              "leftValue": "{{$json.action_params}}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "0468e2db-1b62-45ff-9f1b-fa37763b4fcf",
+              "leftValue": "={{$json.safety_level}}",
+              "rightValue": 2,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "0a831522-a95a-4c45-81ef-eba1d88f18ad",
+      "name": "Validate_Decision"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://decision-engine:8000/decide",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"incident_type\": \"{{ $json.body.incident_type }}\",\n  \"service\": \"{{ $json.body.service }}\",\n  \"severity\": \"{{ $json.body.severity }}\",\n  \"timestamp\": \"{{ $json.body.timestamp }}\",\n  \"source\": \"{{ $json.body.source }}\"\n}",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "00b29e5b-030b-40fe-8eb2-d4ab68d6259f",
+      "name": "Call_Decision_Engine"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/prod/workflow2/input",
+        "options": {
+          "responseCode": {
+            "values": {}
+          },
+          "responseData": "{   \"status\": \"received\" }",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "content-type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "f3bd8509-67ec-43f1-8c88-2b33df2315b3",
+      "name": "Incident_Input",
+      "webhookId": "cb81edab-77a3-4286-bd72-4d974f414b12"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Validate_Decision": {
+      "main": [
+        [
+          {
+            "node": "Forward_Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call_Decision_Engine": {
+      "main": [
+        [
+          {
+            "node": "Validate_Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Incident_Input": {
+      "main": [
+        [
+          {
+            "node": "Call_Decision_Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "fbaef9f6-36fb-480d-9bfe-a1761e2b021d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "550c9b25708f97d5ede5d8bc17a0f9f166bd90e8652782284824d451446c7bbc"
+  },
+  "id": "CacIGnz-jR517EXKPH4EN",
+  "tags": []
+}
