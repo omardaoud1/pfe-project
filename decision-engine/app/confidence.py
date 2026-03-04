@@ -1,37 +1,42 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
+
+# How many recent records to consider
+LOOKBACK = 5
+
+# Per-entry adjustments
+SUCCESS_BONUS = 0.02   # × 5 successes = +0.10
+FAILURE_PENALTY = 0.15 # × 2 failures  = -0.30
 
 
 def compute_confidence(
     base_confidence: float,
     history: List[Dict[str, Any]],
-    max_adjustment: float = 0.3
-) -> float:
+) -> Tuple[float, bool]:
     """
-    Compute final confidence score.
+    Compute final confidence from the last LOOKBACK (5) history entries.
 
-    - base_confidence: value from static rules
-    - history: past decisions for the same incident_key
-    - max_adjustment: maximum total adjustment allowed
+    Rules (applied to the last 5 records for this incident_key):
+      • Each success  → +0.02   (5 successes = +0.10)
+      • Each failure  → -0.15   (2 failures  = -0.30)
+      Both adjustments are cumulative and can apply together.
+
+    Returns:
+        (final_confidence, history_used)
+        history_used = False when history is empty (base values used as-is)
     """
-
     if not history:
-        return round(base_confidence, 2)
+        return round(base_confidence, 2), False
 
-    success_count = sum(1 for h in history if h["success"])
-    failure_count = sum(1 for h in history if not h["success"])
-    total = success_count + failure_count
+    # Take only the most recent LOOKBACK entries
+    recent = history[-LOOKBACK:]
 
-    if total == 0:
-        return round(base_confidence, 2)
+    success_count = sum(1 for e in recent if e.get("success", False))
+    failure_count = sum(1 for e in recent if not e.get("success", True))
 
-    success_ratio = success_count / total
-
-    # Adjustment logic
-    adjustment = (success_ratio - 0.5) * 2 * max_adjustment
+    adjustment = (success_count * SUCCESS_BONUS) - (failure_count * FAILURE_PENALTY)
     final_confidence = base_confidence + adjustment
 
-    # Clamp between 0 and 1
+    # Clamp to [0.0, 1.0]
     final_confidence = max(0.0, min(1.0, final_confidence))
 
-    return round(final_confidence, 2)
-
+    return round(final_confidence, 2), True

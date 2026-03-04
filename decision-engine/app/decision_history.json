@@ -1,18 +1,34 @@
 [
   {
-    "incident_key": "f351d654eb10bba62330bc6c2d467340034dcb8cc9179900b2560b9e01052f07",
+    "incident_key": "0f38b792a2b148d4998c1e59b6165304c7b66f0e9ef2cb5aa0222d328af11a13",
     "action": "restart_redis",
     "confidence": 0.7,
     "safety_level": 3,
     "success": true,
-    "timestamp": "2026-02-20T11:43:01.302916"
+    "timestamp": "2026-03-04T02:31:01.351756"
   },
   {
-    "incident_key": "f351d654eb10bba62330bc6c2d467340034dcb8cc9179900b2560b9e01052f07",
+    "incident_key": "01279ab6bcad0f318adeb70e78424d96c67736b273471244bd9c537139fe617e",
+    "action": "restart_gateway",
+    "confidence": 0.5,
+    "safety_level": 2,
+    "success": true,
+    "timestamp": "2026-03-04T02:37:12.540795"
+  },
+  {
+    "incident_key": "0f38b792a2b148d4998c1e59b6165304c7b66f0e9ef2cb5aa0222d328af11a13",
     "action": "restart_redis",
     "confidence": 1.0,
     "safety_level": 3,
     "success": true,
-    "timestamp": "2026-02-20T11:48:02.191858"
+    "timestamp": "2026-03-04T16:10:31.009438"
+  },
+  {
+    "incident_key": "01279ab6bcad0f318adeb70e78424d96c67736b273471244bd9c537139fe617e",
+    "action": "restart_gateway",
+    "confidence": 0.8,
+    "safety_level": 3,
+    "success": true,
+    "timestamp": "2026-03-04T16:15:31.233982"
   }
 ]

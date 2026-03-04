@@ -20,4 +20,5 @@ class DecisionOutput(BaseModel):
     confidence: float
     reason: str
     decided_at: datetime
-
+    history_used: bool          # True  → learned from past executions
+                                # False → base values from rules.py (first time)
