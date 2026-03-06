@@ -67,6 +67,10 @@
             {
               "name": "content-type",
               "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJuOG4iLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6OTk5OTk5OTk5OX0.K-8Igh4XsqAgnZ0Dlx2fStnJEl7vOHG-fKR--62SxPU"
             }
           ]
         },
@@ -109,7 +113,7 @@
               "value": "={{ $json.action }}"
             },
             {
-              "name": "confidence",
+              "name": "=confidence",
               "value": "={{ $node[\"Decision Receiver\"].json.body.confidence }}"
             },
             {
@@ -319,7 +323,7 @@
     "executionOrder": "v1",
     "availableInMCP": false
   },
-  "versionId": "9f9a6be9-3029-4058-a37c-7923510b55d4",
+  "versionId": "b3dfd062-dc3a-41a3-a0c4-1eb9f37533f5",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "550c9b25708f97d5ede5d8bc17a0f9f166bd90e8652782284824d451446c7bbc"

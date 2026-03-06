@@ -118,6 +118,10 @@
             {
               "name": "content-type",
               "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJuOG4iLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6OTk5OTk5OTk5OX0.K-8Igh4XsqAgnZ0Dlx2fStnJEl7vOHG-fKR--62SxPU"
             }
           ]
         },
@@ -160,7 +164,7 @@
               "value": "={{ $json.action }}"
             },
             {
-              "name": "confidence",
+              "name": "=confidence",
               "value": "={{ $node[\"structure data\"].json.confidence }}"
             },
             {
@@ -277,7 +281,7 @@
     "executionOrder": "v1",
     "availableInMCP": false
   },
-  "versionId": "2cb20433-9b07-4ed0-a284-c25c16b949c0",
+  "versionId": "201132b5-e024-4573-b65f-af543ec1c29d",
   "meta": {
     "instanceId": "550c9b25708f97d5ede5d8bc17a0f9f166bd90e8652782284824d451446c7bbc"
   },
