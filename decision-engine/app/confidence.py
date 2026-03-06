@@ -4,8 +4,8 @@ from typing import List, Dict, Any, Tuple
 LOOKBACK = 5
 
 # Per-entry adjustments
-SUCCESS_BONUS = 0.02   # × 5 successes = +0.10
-FAILURE_PENALTY = 0.15 # × 2 failures  = -0.30
+SUCCESS_BONUS = 0.05   # × 5 successes = +0.10
+FAILURE_PENALTY = 0.7 # × 2 failures  = -0.30
 
 
 def compute_confidence(

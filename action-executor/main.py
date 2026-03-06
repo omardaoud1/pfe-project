@@ -13,6 +13,7 @@ class ExecuteRequest(BaseModel):
 
 ACTION_MAP = {
     "restart_redis": ["docker", "restart", "redis"],
+    "restart_redis_history": ["docker", "restart", "redis-history"],
     "restart_rabbitmq": ["docker", "restart", "rabbitmq"],
     "restart_gateway": ["docker", "restart", "gateway"],
     "restart_host": ["reboot"],

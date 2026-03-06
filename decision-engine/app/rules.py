@@ -59,6 +59,18 @@ def evaluate_rules(incident_type: str, service: str, severity: str) -> RuleResul
         )
 
     # --------------------
+    # Redis History down
+    # --------------------
+    if incident_type == "RedisHistoryDown" and service == "redis-history":
+        return RuleResult(
+            action="restart_redis_history",
+            action_params={},
+            base_confidence=0.9,
+            safety_level=3,
+            reason="Redis History service is down — auto-restart to restore confidence learning"
+        )
+
+    # --------------------
     # RabbitMQ down
     # --------------------
     if incident_type == "RabbitMQDown" and service == "rabbitmq":

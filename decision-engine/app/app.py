@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from history import save_decision
+from history import save_decision, get_history, get_all_keys, get_all_history
 from fastapi import FastAPI, HTTPException
 from models import IncidentInput, DecisionOutput
 from decision_engine import make_decision
@@ -40,7 +40,7 @@ class ExecutionResultInput(BaseModel):
 def execution_result(data: ExecutionResultInput):
     """
     Called by n8n Workflow 3 (Node 5A).
-    Persists execution result into decision_history.json
+    Persists execution result into Redis (capped at 30 entries per incident_key).
     """
 
     save_decision(
@@ -48,7 +48,37 @@ def execution_result(data: ExecutionResultInput):
         action=data.action,
         confidence=data.confidence,
         safety_level=data.safety_level,
-        success=(data.execution_status.lower () == "success")
+        success=(data.execution_status.lower() == "success"),
     )
 
     return {"status": "stored"}
+
+
+@app.get("/history")
+def list_all_history():
+    """
+    Returns every stored decision entry across ALL incident keys,
+    sorted oldest → newest — the Redis equivalent of decision_history.json.
+
+    Each entry contains:
+      decision_id, incident_key, action, confidence, safety_level, success, timestamp
+    """
+    entries = get_all_history()
+    return {
+        "total": len(entries),
+        "entries": entries,
+    }
+
+
+@app.get("/history/{incident_key}")
+def get_incident_history(incident_key: str):
+    """
+    Returns the decision history (up to 30 entries) for a single incident_key.
+    Ordered oldest → newest.
+    """
+    entries = get_history(incident_key)
+    return {
+        "incident_key": incident_key,
+        "count": len(entries),
+        "entries": entries,
+    }
