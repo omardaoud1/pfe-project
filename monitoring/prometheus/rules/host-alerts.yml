@@ -58,7 +58,7 @@ groups:
       description: "Queue has more than 100 messages"
 
   - alert: GatewayDown
-    expr: probe_success == 0
+    expr: probe_success{job="blackbox_http"} == 0
     for: 10s
     labels:
       severity: critical

@@ -4,6 +4,9 @@ services:
   prometheus:
     image: prom/prometheus
     container_name: prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--web.enable-lifecycle"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./prometheus/rules:/etc/prometheus/rules
@@ -132,6 +135,34 @@ services:
       - ACTION_EXECUTOR_SECRET=${ACTION_EXECUTOR_SECRET}
     restart: unless-stopped
 
+      
+# ── Docker Watcher — Auto-discovery service ──────────────────────────────────
+  # Watches for new containers every 30s.
+  # Automatically adds new services to rules.py and ACTION_MAP in main.py.
+  # Removal is intentionally NOT handled (stopping ≠ deleting).
+  docker-watcher:
+    build: ../docker-watcher
+    container_name: docker-watcher
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ../decision-engine/app/rules.py:/rules/rules.py
+      - ../action-executor/main.py:/action/main.py
+      - ./prometheus/prometheus.yml:/prometheus/prometheus.yml
+      - ./prometheus/rules:/prometheus/rules
+    environment:
+      - PROMETHEUS_URL=http://prometheus:9090
+    restart: unless-stopped
+    depends_on:
+      - decision-engine
+      - action-executor
+      - prometheus
+
+  test-service:
+    image: nginx:alpine
+    container_name: test-service
+    labels:
+      - "monitoring.port=80"
+      - "monitoring.probe=http"
 
 volumes:
   n8n_data:
