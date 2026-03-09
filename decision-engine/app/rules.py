@@ -95,6 +95,17 @@ def evaluate_rules(incident_type: str, service: str, severity: str) -> RuleResul
         )
 
     # --------------------
+    # alo-alo down (auto-discovered)
+    # --------------------
+    if incident_type == "AloaloDown" and service == "alo-alo":
+        return RuleResult(
+            action="restart_alo_alo",
+            action_params={},
+            base_confidence=0.3,
+            safety_level=2,
+            reason="Auto-discovered service — low confidence baseline"
+        )
+    # --------------------
     # Fallback (unknown incident)
     # --------------------
     return RuleResult(
@@ -104,4 +115,3 @@ def evaluate_rules(incident_type: str, service: str, severity: str) -> RuleResul
         safety_level=2,
         reason="No matching rule for this incident"
     )
-

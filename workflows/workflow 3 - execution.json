@@ -35,15 +35,24 @@
             {
               "id": "a2417a4c-fa84-40e5-85ce-7394016500d8",
               "leftValue": "={{ $json.body.action }}",
-              "rightValue": "noop",
+              "rightValue": "",
               "operator": {
                 "type": "string",
                 "operation": "notEmpty",
                 "singleValue": true
               }
+            },
+            {
+              "id": "b3528a5d-fc95-41e6-b963-07e5a020c631",
+              "leftValue": "={{ $json.body.action }}",
+              "rightValue": "noop",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
             }
           ],
-          "combinator": "or"
+          "combinator": "and"
         },
         "looseTypeValidation": true,
         "options": {}
@@ -198,7 +207,7 @@
     {
       "parameters": {
         "mode": "raw",
-        "jsonOutput": "={\n  \"decision_id\": \"={{ $json.body.decision_id }}\",\n  \"incident_key\": \"={{ $json.body.incident_key }}\",\n  \"action\": \"={{ $json.body.action }}\",\n  \"action_params\": \"={{ $json.body.action_params }}\",\n  \"safety_level\": \"={{ $json.body.safety_level }}\",\n  \"confidence\": \"={{ $json.body.confidence }}\",\n  \"reason\": \"={{ $json.body.reason }}\",\n  \"decided_at\": \"={{ $json.body.decided_at }}\"\n}",
+        "jsonOutput": "={\n  \"decision_id\": \"{{ $json.body.decision_id }}\",\n  \"incident_key\": \"{{ $json.body.incident_key }}\",\n  \"action\": \"{{ $json.body.action }}\",\n  \"action_params\": \"{{ $json.body.action_params }}\",\n  \"safety_level\": \"{{ $json.body.safety_level }}\",\n  \"confidence\": \"{{ $json.body.confidence }}\",\n  \"reason\": \"{{ $json.body.reason }}\",\n  \"decided_at\": \"{{ $json.body.decided_at }}\"\n}",
         "options": {}
       },
       "type": "n8n-nodes-base.set",

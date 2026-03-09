@@ -1,0 +1,13 @@
+groups:
+- name: auto-discovered-alerts
+  rules:
+
+  - alert: AloaloDown
+    expr: probe_success{job="blackbox_alo-alo"} == 0
+    for: 10s
+    labels:
+      severity: critical
+      service: alo-alo
+    annotations:
+      summary: "alo-alo is down"
+      description: "Auto-discovered service alo-alo probe failed"

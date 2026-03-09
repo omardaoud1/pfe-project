@@ -14,10 +14,18 @@ class ExecuteRequest(BaseModel):
 ACTION_MAP = {
     "restart_redis": ["docker", "restart", "redis"],
     "restart_redis_history": ["docker", "restart", "redis-history"],
+<<<<<<< Updated upstream
     "restart_rabbitmq": ["docker", "restart", "rabbitmq"],
     "restart_gateway": ["docker", "restart", "gateway"],
     "restart_host": ["reboot"],
     "cleanup_disk": ["sh", "-c", "rm -rf /var/log/*"]
+=======
+    "restart_rabbitmq":      ["docker", "restart", "rabbitmq"],
+    "restart_gateway":       ["docker", "restart", "gateway"],
+    "restart_host":          ["reboot"],
+    "cleanup_disk":          ["sh", "-c", "rm -rf /var/log/*"],
+    "restart_alo_alo":         ["docker", "restart", "alo-alo"],
+>>>>>>> Stashed changes
 }
 
 @app.get("/health")

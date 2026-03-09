@@ -17,8 +17,10 @@ def decide(incident: IncidentInput):
     Called by n8n Workflow 2.
     Receives an incident and returns a final decision.
     """
+    print(f"[DECIDE] incident_type={incident.incident_type!r}  service={incident.service!r}  severity={incident.severity!r}", flush=True)
     try:
         decision = make_decision(incident)
+        print(f"[DECIDE] → action={decision.action!r}  confidence={decision.confidence}  reason={decision.reason!r}", flush=True)
         return decision
 
     except Exception as e:

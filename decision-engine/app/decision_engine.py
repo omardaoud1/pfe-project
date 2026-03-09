@@ -1,9 +1,10 @@
 import hashlib
+import importlib
 import uuid
 from datetime import datetime
 
+import rules as _rules_module
 from models import IncidentInput, DecisionOutput
-from rules import evaluate_rules
 from history import get_history
 from confidence import compute_confidence
 
@@ -61,7 +62,9 @@ def make_decision(incident: IncidentInput) -> DecisionOutput:
     incident_key = build_incident_key(incident)
 
     # 2. Apply static rules → always get base values
-    rule_result = evaluate_rules(
+    # Reload rules module so docker-watcher's runtime additions are picked up
+    importlib.reload(_rules_module)
+    rule_result = _rules_module.evaluate_rules(
         incident_type=incident.incident_type,
         service=incident.service,
         severity=incident.severity,
