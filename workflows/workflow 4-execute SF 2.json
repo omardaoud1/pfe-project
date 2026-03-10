@@ -14,10 +14,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        0,
-        0
+        -752,
+        64
       ],
-      "id": "ec3ef877-b9b5-4516-b2b1-3326a8c8c898",
+      "id": "e51837ca-1220-4806-90b2-c92851e19f9b",
       "name": "Webhook",
       "webhookId": "cc0a2443-4304-41cb-ab85-44e92f0f7cc1"
     },
@@ -68,10 +68,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        208,
-        0
+        -544,
+        64
       ],
-      "id": "332818f2-21de-407b-9d8c-a9642822348b",
+      "id": "107da45a-1021-4d7b-ba2a-bd42c736d8d3",
       "name": "structure data"
     },
     {
@@ -102,10 +102,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        416,
-        0
+        -336,
+        64
       ],
-      "id": "2ca32468-0d0a-4beb-b7a6-1b28724b6759",
+      "id": "3c40fe56-c402-4c09-982d-ba3f759de9c3",
       "name": "approval result"
     },
     {
@@ -129,10 +129,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
       "position": [
-        752,
-        -64
+        0,
+        0
       ],
-      "id": "b1a6b121-5358-4b8f-9c8a-58b902287ebf",
+      "id": "9474bb1b-43a6-4c75-9b29-6e3b476408b5",
       "name": "Auto_Execution"
     },
     {
@@ -178,10 +178,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
       "position": [
-        1008,
-        -32
+        256,
+        32
       ],
-      "id": "0277092f-0ecb-4919-9939-09fb2462aa06",
+      "id": "1f71622e-5679-4fe1-a350-64a3247ef78c",
       "name": "Report_Execution_Result"
     },
     {
@@ -198,10 +198,10 @@
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.4,
       "position": [
-        1232,
-        0
+        480,
+        64
       ],
-      "id": "d4f10204-cb45-463e-9a6e-76e8cf4c1173",
+      "id": "2e34c452-a8c7-489a-9c96-097773396cd4",
       "name": "Send-Result",
       "webhookId": "f114225c-62f0-43df-be28-7a61e50e8714",
       "retryOnFail": false,
@@ -212,6 +212,33 @@
         }
       },
       "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#rejected-action",
+          "mode": "name"
+        },
+        "text": "=🚨rejected action 🚨                        \naction :{{ $json.action }}\n🆔 Decision ID: {{ $json.decision_id }}\n📌 Incident Key: {{ $json.incident_key }}\n📊 Confidence: {{ $json.confidence }}\n🛡️ Safety Level: {{ $json.safety_level }}\n⏱️ Decided At:{{ $json.decided_at }}\n\n",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        -128,
+        240
+      ],
+      "id": "fd1ebb19-9f17-4cc7-8532-609f383c5cc1",
+      "name": "Send a message",
+      "webhookId": "e0649720-904d-48f3-a15e-cefefd5a61a0",
+      "credentials": {
+        "slackApi": {
+          "id": "731AsEBCeBbQ6caf",
+          "name": "Slack account"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -246,6 +273,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -277,8 +311,9 @@
     "executionOrder": "v1",
     "availableInMCP": false
   },
-  "versionId": "2cb20433-9b07-4ed0-a284-c25c16b949c0",
+  "versionId": "cbe14fe4-dfbe-49a2-9b81-8f6e386d5ff2",
   "meta": {
+    "templateCredsSetupCompleted": true,
     "instanceId": "550c9b25708f97d5ede5d8bc17a0f9f166bd90e8652782284824d451446c7bbc"
   },
   "id": "ssxJ23zfYR8n_hkTUO1Do",
