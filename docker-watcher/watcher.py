@@ -22,6 +22,7 @@ Stopping a container for testing must never delete its rule.
 import time
 import re
 import os
+import socket
 import requests
 import docker
 
@@ -178,6 +179,7 @@ def build_prometheus_job(service_name: str, port: str, probe: str) -> str:
     blackbox.yml already has http_2xx — tcp_connect needs to be added there too.
     """
     module = "http_2xx" if probe == "http" else "tcp_connect"
+    target = f"http://{service_name}:{port}" if probe == "http" else f"{service_name}:{port}"
     return f"""
   # auto-discovered: {service_name}
   - job_name: "blackbox_{service_name}"
@@ -186,7 +188,7 @@ def build_prometheus_job(service_name: str, port: str, probe: str) -> str:
       module: [{module}]
     static_configs:
       - targets:
-        - {service_name}:{port}
+        - {target}
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
@@ -293,9 +295,72 @@ def reload_prometheus():
 # Main processing
 # ══════════════════════════════════════════════════════════════════════════════
 
-def process_new_service(container):
+def resolve_container_port(container, user_port: str, client=None) -> str:
+    """
+    Resolves the actual port that blackbox_exporter should probe (inside Docker
+    network) from the monitoring.port label that users typically set to the HOST port.
+
+    Steps:
+    1. Check PortBindings: if user_port matches a HOST port, return the corresponding
+       CONTAINER port (e.g. monitoring.port=1111 with ports: 1111:80 → returns 80).
+    2. Check the IMAGE's ExposedPorts (not container's — docker-compose contaminates
+       container ExposedPorts by adding mapped ports): if resolved port is not in the
+       image's exposed ports, fall back to the lowest image-exposed port.
+       This handles the case where user sets ports: 1111:1111 for nginx (which only
+       listens on 80) — the image exposes only 80, so we fall back to 80.
+    """
+    port_bindings = (
+        container.attrs.get("HostConfig", {}).get("PortBindings") or {}
+    )
+
+    # Step 1: map host port → container port via PortBindings
+    resolved = user_port
+    for container_port_proto, bindings in port_bindings.items():
+        if not bindings:
+            continue
+        container_port = container_port_proto.split("/")[0]
+        for binding in bindings:
+            if binding.get("HostPort") == user_port:
+                resolved = container_port
+                break
+
+    # Step 2: validate against image-level ExposedPorts
+    if client:
+        try:
+            img = client.images.get(container.image)
+            image_exposed = img.attrs.get("Config", {}).get("ExposedPorts") or {}
+            exposed_ports = {p.split("/")[0] for p in image_exposed.keys()}
+            if exposed_ports and resolved not in exposed_ports:
+                fallback = str(min(int(p) for p in exposed_ports))
+                print(
+                    f"[WATCHER] ⚠️  Port {resolved} not in image ExposedPorts "
+                    f"{exposed_ports} — using {fallback} instead"
+                )
+                return fallback
+        except Exception as e:
+            print(f"[WATCHER] ⚠️  Could not inspect image for port validation: {e}")
+
+    return resolved
+
+
+def is_port_open(host: str, port: str, timeout: float = 3.0) -> bool:
+    """
+    Attempts a TCP connect to host:port from inside the Docker network.
+    Returns True if the port is accepting connections, False otherwise.
+    """
+    try:
+        with socket.create_connection((host, int(port)), timeout=timeout):
+            return True
+    except (OSError, ValueError):
+        return False
+
+
+def process_new_service(container, client=None) -> bool:
     """
     Full registration pipeline for a newly discovered service.
+    Each step is idempotent — skipped if already present in the target file.
+    Returns True when all applicable steps are complete.
+    Returns False if the port is not yet reachable (caller will retry next cycle).
     """
     name       = container.name.lstrip("/")
     action_key = get_action_key(name)
@@ -303,47 +368,73 @@ def process_new_service(container):
     port       = labels.get("monitoring.port", None)
     probe      = labels.get("monitoring.probe", "tcp").lower()
 
-    print(f"[WATCHER] 🆕 New service: '{name}' | port={port or 'not set'} | probe={probe}")
+    # Resolve the actual container-side port (in case the user supplied the
+    # host port, or the container port doesn't match what the image listens on)
+    if port:
+        resolved_port = resolve_container_port(container, port, client)
+        if resolved_port != port:
+            print(f"[WATCHER] 🔄 '{name}': monitoring.port={port} → using container port {resolved_port}")
+            port = resolved_port
 
-    # 1. rules.py
+    print(f"[WATCHER] 🆕 Registering '{name}' | port={port or 'not set'} | probe={probe}")
+
+    # Port reachability check — verify the resolved port is actually open before
+    # writing any config. Returns False so the caller retries next 30s cycle.
+    if port:
+        if is_port_open(name, port):
+            print(f"[WATCHER] ✅ Port {port} on '{name}' is open — proceeding")
+        else:
+            print(f"[WATCHER] ⏳ Port {port} on '{name}' not reachable yet — retrying in 30s")
+            return False
+
+    # 1. rules.py (idempotent)
     try:
-        add_rule_to_rules_py(name, action_key)
+        with open(RULES_PATH, "r") as f:
+            rules_content = f.read()
+        if name not in get_known_services_from_rules(rules_content):
+            add_rule_to_rules_py(name, action_key)
     except Exception as e:
         print(f"[WATCHER] ❌ rules.py failed for '{name}': {e}")
-        return
+        return False
 
-    # 2. ACTION_MAP
+    # 2. ACTION_MAP (idempotent)
     try:
-        add_action_to_action_map(action_key, name)
+        with open(ACTION_MAP_PATH, "r") as f:
+            action_content = f.read()
+        if action_key not in get_known_actions_from_action_map(action_content):
+            add_action_to_action_map(action_key, name)
     except Exception as e:
         print(f"[WATCHER] ❌ main.py failed for '{name}': {e}")
-        return
+        return False
 
-    # 3 & 4. Prometheus (only if monitoring.port label is present)
+    # 3 & 4. Prometheus (only if monitoring.port label is present, idempotent)
     prometheus_updated = False
     if port:
         try:
-            add_prometheus_job(name, port, probe)
-            prometheus_updated = True
+            if not is_job_in_prometheus(name):
+                add_prometheus_job(name, port, probe)
+                prometheus_updated = True
         except Exception as e:
             print(f"[WATCHER] ❌ prometheus.yml failed for '{name}': {e}")
+            return False
 
         try:
-            add_alert_rule(name)
+            if not is_alert_in_file(name):
+                add_alert_rule(name)
         except Exception as e:
             print(f"[WATCHER] ❌ auto-discovered.yml failed for '{name}': {e}")
+            return False
 
-        # 5. Reload Prometheus so changes are live immediately
         if prometheus_updated:
             reload_prometheus()
     else:
         print(
             f"[WATCHER] ⚠️  '{name}' has no monitoring.port label — "
-            f"registered in rules.py and main.py but Prometheus probe skipped.\n"
-            f"           Add label 'monitoring.port=PORT' to docker-compose to enable full monitoring."
+            f"registered in rules.py and main.py but Prometheus probe skipped."
         )
 
     print(f"[WATCHER] ✅ '{name}' registration complete")
+    return True
 
 
 def watch():
@@ -374,20 +465,36 @@ def watch():
                     continue
                 if name in KNOWN_SERVICES:
                     continue
-                # Check live file state FIRST — a service may have been cleaned
-                # from rules.py after a previous watcher cycle, so already_processed
-                # alone would incorrectly skip re-registration.
-                if name in known_in_rules:
-                    already_processed.add(name)
-                    continue
-                if get_action_key(name) in known_in_actions:
-                    already_processed.add(name)
-                    continue
                 if name in already_processed:
                     continue
 
-                process_new_service(container)
-                already_processed.add(name)
+                # Check ALL 4 registration steps — a service is only fully done
+                # when every applicable component is present. This prevents the bug
+                # where rules.py was written but prometheus.yml was not (e.g. due to
+                # a port check failure or mid-pipeline error), causing the service to
+                # be skipped forever based on the rules.py check alone.
+                labels     = container.labels or {}
+                has_port   = bool(labels.get("monitoring.port"))
+                action_key = get_action_key(name)
+
+                fully_registered = (
+                    name in known_in_rules
+                    and action_key in known_in_actions
+                    and (not has_port or is_job_in_prometheus(name))
+                    and (not has_port or is_alert_in_file(name))
+                )
+
+                if fully_registered:
+                    already_processed.add(name)
+                    continue
+
+                # Not fully registered — run (or resume) the pipeline.
+                # Only mark done if process_new_service returns True (all steps OK).
+                # On False (port not ready), the service stays out of already_processed
+                # so it will be retried on the next 30s cycle.
+                success = process_new_service(container, client)
+                if success:
+                    already_processed.add(name)
 
         except docker.errors.DockerException as e:
             print(f"[WATCHER] ❌ Docker error: {e}")

@@ -121,6 +121,37 @@ The `incident_type` naming convention used in Prometheus alert labels must match
 3. Add a Prometheus alert rule in `monitoring/prometheus/rules/host-alerts.yml`
 4. Reload Prometheus: `curl -X POST http://localhost:9090/-/reload`
 
+## DockerAgent (`agent/`)
+
+A conversational CLI (and HTTP API) for managing Docker Compose services interactively. It is separate from the monitoring pipeline and runs locally, not in Docker.
+
+**Two interfaces:**
+- `agent.py` — interactive CLI (run directly: `python agent.py`)
+- `api.py` — FastAPI HTTP wrapper on port 8002, designed for WhatsApp-style session-based chat (`POST /chat`, `POST /reset`, `GET /health`). Run with: `uvicorn api:app --host 0.0.0.0 --port 8002 --reload`
+
+**Setup (CPU-only):**
+```bash
+cd agent
+python -m venv venv && source venv/bin/activate
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+pip install -r requirements.txt
+```
+
+**LLM backend:** Uses Ollama locally (`phi3:mini`) via `llm_client.py`. Requires `ollama serve` and `ollama pull phi3:mini`. The `DockerAgentSession` class manages multi-turn conversation history.
+
+**Conversation flow** (implemented as a step machine in `conversation_manager.py`):
+- ADD: name → image → host port → container port → probe → restart → env → volumes → depends_on → command → YAML preview + confirm → execute
+- REMOVE: service name → show locations found → confirm → execute + report
+
+**Internal modules:**
+- `conversation_manager.py` — `Step` enum and `ConversationManager` (state machine + validation)
+- `docker_manager.py` — builds service YAML blocks, runs `docker compose up`, waits for docker-watcher
+- `cleanup_manager.py` — removes a service from compose, rules.py, main.py, prometheus configs; restarts docker-watcher
+- `validator.py` — input validation (names, images, ports, etc.)
+- `llm_client.py` — Ollama HTTP client + `DockerAgentSession`
+
+When a service is added via DockerAgent, it waits 35 seconds for docker-watcher to auto-register it, then reloads Prometheus — so the full monitoring pipeline activates automatically.
+
 ## Environment
 
 - `ACTION_EXECUTOR_SECRET` — shared JWT secret between n8n and action-executor. Set in `monitoring/.env`.

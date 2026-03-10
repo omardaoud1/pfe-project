@@ -2,12 +2,12 @@ groups:
 - name: auto-discovered-alerts
   rules:
 
-  - alert: AloaloDown
-    expr: probe_success{job="blackbox_alo-alo"} == 0
+  - alert: TestagentDown
+    expr: probe_success{job="blackbox_test-agent"} == 0
     for: 10s
     labels:
       severity: critical
-      service: alo-alo
+      service: test-agent
     annotations:
-      summary: "alo-alo is down"
-      description: "Auto-discovered service alo-alo probe failed"
+      summary: "test-agent is down"
+      description: "Auto-discovered service test-agent probe failed"

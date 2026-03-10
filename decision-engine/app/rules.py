@@ -95,11 +95,11 @@ def evaluate_rules(incident_type: str, service: str, severity: str) -> RuleResul
         )
 
     # --------------------
-    # alo-alo down (auto-discovered)
+    # test-agent down (auto-discovered)
     # --------------------
-    if incident_type == "AloaloDown" and service == "alo-alo":
+    if incident_type == "TestagentDown" and service == "test-agent":
         return RuleResult(
-            action="restart_alo_alo",
+            action="restart_test_agent",
             action_params={},
             base_confidence=0.3,
             safety_level=2,

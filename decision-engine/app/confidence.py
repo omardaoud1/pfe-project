@@ -4,8 +4,8 @@ from typing import List, Dict, Any, Tuple
 LOOKBACK = 5
 
 # Per-entry adjustments
-SUCCESS_BONUS = 0.05   # × 5 successes = +0.10
-FAILURE_PENALTY = 0.7 # × 2 failures  = -0.30
+SUCCESS_BONUS   = 0.05  # × 5 successes = +0.25
+FAILURE_PENALTY = 0.15  # × 2 failures  = -0.30
 
 
 def compute_confidence(
@@ -16,7 +16,7 @@ def compute_confidence(
     Compute final confidence from the last LOOKBACK (5) history entries.
 
     Rules (applied to the last 5 records for this incident_key):
-      • Each success  → +0.02   (5 successes = +0.10)
+      • Each success  → +0.05   (5 successes = +0.25)
       • Each failure  → -0.15   (2 failures  = -0.30)
       Both adjustments are cumulative and can apply together.
 

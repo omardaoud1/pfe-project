@@ -2,12 +2,9 @@ services:
   prometheus:
     image: prom/prometheus
     container_name: prometheus
-<<<<<<< Updated upstream
-=======
     command:
     - --config.file=/etc/prometheus/prometheus.yml
     - --web.enable-lifecycle
->>>>>>> Stashed changes
     volumes:
     - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     - ./prometheus/rules:/etc/prometheus/rules
@@ -121,12 +118,6 @@ services:
     ports:
     - 8001:8001
     volumes:
-<<<<<<< Updated upstream
-      - /var/run/docker.sock:/var/run/docker.sock
-    restart: unless-stopped
-
-
-=======
     - /var/run/docker.sock:/var/run/docker.sock
     environment:
     - ACTION_EXECUTOR_SECRET=${ACTION_EXECUTOR_SECRET}
@@ -147,16 +138,15 @@ services:
     - decision-engine
     - action-executor
     - prometheus
-  alo-alo:
+  test-agent:
     image: nginx:latest
-    container_name: alo-alo
+    container_name: test-agent
     ports:
-    - 4321:80
+    - 5665:80
     labels:
     - monitoring.port=80
     - monitoring.probe=http
     restart: unless-stopped
->>>>>>> Stashed changes
 volumes:
   n8n_data:
     external: true
