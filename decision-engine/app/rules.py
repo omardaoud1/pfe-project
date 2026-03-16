@@ -37,7 +37,7 @@ def evaluate_rules(incident_type: str, service: str, severity: str) -> RuleResul
     # --------------------
     # Disk usage high
     # --------------------
-    if incident_type == "DiskHigh":
+    if incident_type == "DiskUsageHigh":
         return RuleResult(
             action="cleanup_disk",
             action_params={},
@@ -100,6 +100,54 @@ def evaluate_rules(incident_type: str, service: str, severity: str) -> RuleResul
     if incident_type == "TestagentDown" and service == "test-agent":
         return RuleResult(
             action="restart_test_agent",
+            action_params={},
+            base_confidence=0.3,
+            safety_level=2,
+            reason="Auto-discovered service — low confidence baseline"
+        )
+
+    # --------------------
+    # docker-agent down (auto-discovered)
+    # --------------------
+    if incident_type == "DockeragentDown" and service == "docker-agent":
+        return RuleResult(
+            action="restart_docker_agent",
+            action_params={},
+            base_confidence=0.3,
+            safety_level=2,
+            reason="Auto-discovered service — low confidence baseline"
+        )
+
+    # --------------------
+    # evolution-postgres down (auto-discovered)
+    # --------------------
+    if incident_type == "EvolutionpostgresDown" and service == "evolution-postgres":
+        return RuleResult(
+            action="restart_evolution_postgres",
+            action_params={},
+            base_confidence=0.3,
+            safety_level=2,
+            reason="Auto-discovered service — low confidence baseline"
+        )
+
+    # --------------------
+    # evolution-api down (auto-discovered)
+    # --------------------
+    if incident_type == "EvolutionapiDown" and service == "evolution-api":
+        return RuleResult(
+            action="restart_evolution_api",
+            action_params={},
+            base_confidence=0.3,
+            safety_level=2,
+            reason="Auto-discovered service — low confidence baseline"
+        )
+
+    # --------------------
+    # rana down (auto-discovered)
+    # --------------------
+    if incident_type == "RanaDown" and service == "rana":
+        return RuleResult(
+            action="restart_rana",
             action_params={},
             base_confidence=0.3,
             safety_level=2,

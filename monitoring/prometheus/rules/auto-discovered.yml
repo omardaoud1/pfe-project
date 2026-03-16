@@ -11,3 +11,13 @@ groups:
     annotations:
       summary: "test-agent is down"
       description: "Auto-discovered service test-agent probe failed"
+
+  - alert: RanaDown
+    expr: probe_success{job="blackbox_rana"} == 0
+    for: 10s
+    labels:
+      severity: critical
+      service: rana
+    annotations:
+      summary: "rana is down"
+      description: "Auto-discovered service rana probe failed"

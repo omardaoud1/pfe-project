@@ -28,7 +28,7 @@ RULES_FILE       = os.path.join(BASE, "decision-engine", "app", "rules.py")
 ACTION_FILE      = os.path.join(BASE, "action-executor", "main.py")
 PROMETHEUS_YML   = os.path.join(BASE, "monitoring", "prometheus", "prometheus.yml")
 AUTO_DISC_FILE   = os.path.join(BASE, "monitoring", "prometheus", "rules", "auto-discovered.yml")
-PROMETHEUS_URL   = "http://localhost:9090"
+PROMETHEUS_URL   = os.environ.get("PROMETHEUS_URL", "http://localhost:9090")
 
 
 # ---------------------------------------------------------------------------
