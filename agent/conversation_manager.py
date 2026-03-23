@@ -32,7 +32,7 @@ class Step(Enum):
 
 
 QUESTIONS = {
-    Step.ASK_INTENT:         "What do you want to do?\n  → add / remove\n  · list · status · reset · quit",
+    Step.ASK_INTENT:         "Hello! I'm DockerAgent.\nWhat do you want to do?\n  → add / remove\n  · list · status · reset · quit",
     Step.ADD_ASK_NAME:       "Service name?",
     Step.ADD_ASK_IMAGE:      "Docker image? (e.g. nginx:latest, redis:7)",
     Step.ADD_ASK_PORT:           "Host port? (exposed on the host, e.g. 8082)",
@@ -89,7 +89,8 @@ class ConversationManager:
             elif "remove" in val.lower() or "delete" in val.lower():
                 self.step = Step.REMOVE_ASK_NAME
             else:
-                return self.step, "Please type 'add' or 'remove'."
+                # any unrecognized input → stay on ASK_INTENT, return greeting
+                return self.step, None
             return self.step, None
 
         # ── ADD: name ───────────────────────────────────────────────────

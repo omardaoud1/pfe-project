@@ -54,6 +54,7 @@ class ChatResponse(BaseModel):
     reply: str            # agent's reply / error / result message
     next_question: str    # next question to ask the user (empty if done)
     action_taken: bool    # True if a docker action was executed
+    text: str = ""        # combined reply + next_question for WhatsApp (n8n reads this)
 
 
 class ResetRequest(BaseModel):
@@ -134,11 +135,15 @@ def chat(req: ChatRequest):
 
     # Validation failed — return the error and repeat the current question
     if error:
+        reply_text = f"⚠ {error}"
+        next_q = cm.current_question()
+        combined = f"{reply_text}\n\n{next_q}".strip() if reply_text else next_q
         return ChatResponse(
             session_id=req.session_id,
-            reply=f"⚠ {error}",
-            next_question=cm.current_question(),
+            reply=reply_text,
+            next_question=next_q,
             action_taken=False,
+            text=combined,
         )
 
     reply = ""
@@ -166,12 +171,14 @@ def chat(req: ChatRequest):
         reply = "\n".join(lines)
 
     next_q = cm.current_question()
+    combined = f"{reply}\n\n{next_q}".strip() if reply else next_q
 
     return ChatResponse(
         session_id=req.session_id,
         reply=reply,
         next_question=next_q,
         action_taken=action_taken,
+        text=combined,
     )
 
 

@@ -99,6 +99,9 @@ services:
     - N8N_HOST=n8n
     - N8N_PORT=5678
     - N8N_PROTOCOL=http
+    - WEBHOOK_URL=https://${NGROK_DOMAIN}
+    extra_hosts:
+    - host.docker.internal:host-gateway
   decision-engine:
     build: ../decision-engine
     container_name: decision-engine
@@ -164,43 +167,17 @@ services:
     - monitoring.port=80
     - monitoring.probe=http
     restart: unless-stopped
-  evolution-postgres:
-    image: postgres:16-alpine
-    container_name: evolution-postgres
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: ngrok
+    command: http n8n:5678 --url=${NGROK_DOMAIN}
     environment:
-    - POSTGRES_DB=evolution
-    - POSTGRES_USER=evolution
-    - POSTGRES_PASSWORD=evo-pass
-    volumes:
-    - evolution_postgres:/var/lib/postgresql/data
-    restart: unless-stopped
-  evolution-api:
-    image: atendai/evolution-api:v1.8.2
-    container_name: evolution-api
+    - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
     ports:
-    - 8083:8080
-    volumes:
-    - evolution_instances:/evolution/instances
-    environment:
-    - SERVER_URL=http://192.168.193.138:8083
-    - AUTHENTICATION_API_KEY=evo-secret
-    - STORE_CLEANING_INTERVAL=7200
-    - STORE_MESSAGE=true
-    - STORE_CONTACTS=true
+    - 4040:4040
     restart: unless-stopped
     depends_on:
-    - redis
-    - evolution-postgres
-  rana:
-    image: nginx:latest
-    container_name: rana
-    ports:
-    - 5656:80
-    labels:
-    - monitoring.port=80
-    - monitoring.probe=http
-    restart: unless-stopped
-
+    - n8n
 volumes:
   n8n_data:
     external: true
@@ -208,5 +185,3 @@ volumes:
     external: true
     name: pfe-monitoring_grafana_data
   redis_history_data: null
-  evolution_instances: null
-  evolution_postgres: null

@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DockerAgent — Telegram Integration Plan</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a2e; background: #fff; font-size: 13px; }
+
+  .cover {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    color: white; padding: 60px 50px; min-height: 220px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .cover h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.5px; }
+  .cover .sub { font-size: 15px; opacity: 0.7; margin-top: 8px; }
+  .cover .tags { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+  .cover .tag {
+    background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+    padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;
+  }
+  .cover .tag.blue { background: #2775ff33; border-color: #2775ff; }
+
+  .page { padding: 30px 50px; }
+
+  h2 { font-size: 18px; color: #0f3460; border-bottom: 2px solid #2775ff;
+       padding-bottom: 6px; margin: 28px 0 14px; }
+  h3 { font-size: 13px; color: #16213e; margin: 16px 0 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  p { line-height: 1.6; color: #333; margin-bottom: 8px; }
+
+  /* Info boxes */
+  .box { border-radius: 8px; padding: 14px 18px; margin: 12px 0; }
+  .box.blue  { background: #eff6ff; border-left: 4px solid #2775ff; }
+  .box.green { background: #f0fdf4; border-left: 4px solid #16a34a; }
+  .box.orange{ background: #fff7ed; border-left: 4px solid #ea580c; }
+  .box.gray  { background: #f8f8f8; border-left: 4px solid #94a3b8; }
+  .box strong { color: #0f3460; }
+
+  /* Comparison table */
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
+  th { background: #0f3460; color: white; padding: 8px 12px; text-align: left; font-weight: 600; }
+  td { padding: 7px 12px; border-bottom: 1px solid #e5e7eb; }
+  tr:nth-child(even) td { background: #f8fafc; }
+  .yes { color: #16a34a; font-weight: 700; }
+  .no  { color: #dc2626; font-weight: 700; }
+
+  /* Phase cards */
+  .phases { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 14px 0; }
+  .phase-card {
+    border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px;
+    position: relative; overflow: hidden;
+  }
+  .phase-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+    background: linear-gradient(90deg, #2775ff, #0f3460);
+  }
+  .phase-card .num {
+    font-size: 28px; font-weight: 800; color: #e5e7eb; position: absolute;
+    top: 8px; right: 12px; line-height: 1;
+  }
+  .phase-card h4 { font-size: 12px; color: #0f3460; font-weight: 700; margin-bottom: 6px; }
+  .phase-card p  { font-size: 11px; color: #555; line-height: 1.5; }
+  .phase-card .file { font-size: 10px; color: #2775ff; font-weight: 600; margin-top: 6px; }
+
+  /* Architecture diagram */
+  .diagram {
+    background: #0f172a; border-radius: 12px; padding: 28px 20px;
+    margin: 14px 0; color: white; overflow: hidden;
+  }
+  .diagram-title { color: #94a3b8; font-size: 11px; text-align: center; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
+
+  .flow { display: flex; align-items: center; justify-content: center; flex-wrap: nowrap; gap: 0; }
+  .node {
+    background: #1e293b; border: 1px solid #334155; border-radius: 10px;
+    padding: 10px 12px; text-align: center; min-width: 90px;
+  }
+  .node.highlight { background: #1d4ed8; border-color: #3b82f6; }
+  .node.green-node { background: #14532d; border-color: #16a34a; }
+  .node.orange-node { background: #7c2d12; border-color: #ea580c; }
+  .node .icon { font-size: 18px; display: block; margin-bottom: 4px; }
+  .node .label { font-size: 10px; font-weight: 600; color: #e2e8f0; }
+  .node .sublabel { font-size: 9px; color: #94a3b8; margin-top: 2px; }
+  .arrow {
+    color: #334155; font-size: 18px; padding: 0 6px; white-space: nowrap;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .arrow .alabel { font-size: 9px; color: #64748b; margin-top: 2px; white-space: nowrap; }
+
+  .sub-nodes {
+    display: flex; justify-content: center; gap: 8px; margin-top: 16px;
+    padding-top: 16px; border-top: 1px dashed #334155;
+  }
+  .sub-node {
+    background: #0f172a; border: 1px dashed #334155; border-radius: 8px;
+    padding: 8px 10px; text-align: center; font-size: 10px; color: #94a3b8;
+  }
+
+  /* Workflow table */
+  .workflow-table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  .workflow-table th { background: #0f3460; color: white; padding: 8px 12px; text-align: left; font-size: 12px; }
+  .workflow-table td { padding: 8px 12px; border-bottom: 1px solid #e5e7eb; vertical-align: top; font-size: 12px; }
+  .workflow-table tr:nth-child(even) td { background: #f8fafc; }
+  .node-num {
+    display: inline-block; background: #2775ff; color: white;
+    width: 22px; height: 22px; border-radius: 50%; text-align: center;
+    line-height: 22px; font-size: 11px; font-weight: 700; margin-right: 6px;
+  }
+  code {
+    background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 4px;
+    padding: 1px 6px; font-family: 'Courier New', monospace; font-size: 11px; color: #0f3460;
+  }
+  pre {
+    background: #1e293b; color: #e2e8f0; padding: 14px 16px; border-radius: 8px;
+    font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.6;
+    overflow-x: auto; margin: 8px 0;
+  }
+  pre .comment { color: #64748b; }
+  pre .key { color: #7dd3fc; }
+  pre .val { color: #86efac; }
+  pre .str { color: #fbbf24; }
+
+  /* Steps list */
+  .steps { list-style: none; padding: 0; }
+  .steps li {
+    display: flex; gap: 12px; padding: 10px 0;
+    border-bottom: 1px solid #f1f5f9; align-items: flex-start;
+  }
+  .steps li:last-child { border-bottom: none; }
+  .step-num {
+    background: linear-gradient(135deg, #2775ff, #0f3460);
+    color: white; width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; flex-shrink: 0;
+  }
+  .step-content h5 { font-size: 12px; font-weight: 700; color: #0f3460; margin-bottom: 3px; }
+  .step-content p  { font-size: 11px; color: #555; line-height: 1.5; }
+
+  /* Data structure */
+  .data-flow { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 12px 0; }
+  .data-card { border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+  .data-card .data-header { background: #0f3460; color: white; padding: 6px 12px; font-size: 11px; font-weight: 600; }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+  .badge.new { background: #dcfce7; color: #166534; }
+  .badge.same { background: #eff6ff; color: #1d4ed8; }
+  .badge.removed { background: #fee2e2; color: #991b1b; }
+
+  .footer {
+    background: #f8fafc; border-top: 1px solid #e5e7eb;
+    padding: 14px 50px; display: flex; justify-content: space-between;
+    align-items: center; font-size: 10px; color: #94a3b8;
+  }
+
+  @media print {
+    .page { padding: 20px 40px; }
+    .cover { padding: 40px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <h1>DockerAgent — Telegram Integration</h1>
+  <div class="sub">Migration from WhatsApp/Evolution API → Telegram Bot API · n8n AI Agent Workflow</div>
+  <div class="tags">
+    <span class="tag">PFE Project</span>
+    <span class="tag blue">Telegram Bot API</span>
+    <span class="tag">n8n Workflow</span>
+    <span class="tag">docker-agent:8002</span>
+    <span class="tag">Zero Cost</span>
+    <span class="tag">Production Ready</span>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- WHY TELEGRAM -->
+  <h2>Why Telegram vs WhatsApp</h2>
+  <table>
+    <tr>
+      <th>Criteria</th>
+      <th>Telegram</th>
+      <th>WhatsApp + Evolution API</th>
+    </tr>
+    <tr>
+      <td>Bot Account</td>
+      <td class="yes">✅ Free via BotFather (2 min)</td>
+      <td class="no">❌ Needs dedicated phone number</td>
+    </tr>
+    <tr>
+      <td>Virtual Number</td>
+      <td class="yes">✅ Not required</td>
+      <td class="no">❌ Required (TextNow not available in Algeria)</td>
+    </tr>
+    <tr>
+      <td>n8n Support</td>
+      <td class="yes">✅ Native Telegram node</td>
+      <td class="no">⚠️ Via Evolution API (extra service)</td>
+    </tr>
+    <tr>
+      <td>Session ID Format</td>
+      <td class="yes">✅ Clean integer chat_id</td>
+      <td class="no">❌ @lid / @s.whatsapp.net complexity</td>
+    </tr>
+    <tr>
+      <td>Ban Risk</td>
+      <td class="yes">✅ None — official API</td>
+      <td class="no">⚠️ High — Evolution uses unofficial bridge</td>
+    </tr>
+    <tr>
+      <td>Infrastructure</td>
+      <td class="yes">✅ No extra containers</td>
+      <td class="no">❌ evolution-api + evolution-postgres</td>
+    </tr>
+    <tr>
+      <td>Works in Algeria</td>
+      <td class="yes">✅ Yes</td>
+      <td class="yes">✅ Yes (but setup blocked)</td>
+    </tr>
+  </table>
+
+  <!-- ARCHITECTURE DIAGRAM -->
+  <h2>Architecture Diagram</h2>
+  <div class="diagram">
+    <div class="diagram-title">Full Local Architecture — Telegram Flow</div>
+    <div class="flow">
+      <div class="node green-node">
+        <span class="icon">📱</span>
+        <div class="label">Your Phone</div>
+        <div class="sublabel">Telegram App</div>
+      </div>
+      <div class="arrow">
+        <span>──────→</span>
+        <span class="alabel">HTTPS</span>
+      </div>
+      <div class="node highlight">
+        <span class="icon">✈️</span>
+        <div class="label">Telegram</div>
+        <div class="sublabel">Bot API</div>
+      </div>
+      <div class="arrow">
+        <span>──────→</span>
+        <span class="alabel">webhook</span>
+      </div>
+      <div class="node highlight">
+        <span class="icon">⚙️</span>
+        <div class="label">n8n :5678</div>
+        <div class="sublabel">Workflow</div>
+      </div>
+      <div class="arrow">
+        <span>──────→</span>
+        <span class="alabel">POST /chat</span>
+      </div>
+      <div class="node orange-node">
+        <span class="icon">🐳</span>
+        <div class="label">docker-agent</div>
+        <div class="sublabel">:8002</div>
+      </div>
+      <div class="arrow">
+        <span>──────→</span>
+        <span class="alabel">reply</span>
+      </div>
+      <div class="node">
+        <span class="icon">📱</span>
+        <div class="label">Your Phone</div>
+        <div class="sublabel">receives reply</div>
+      </div>
+    </div>
+    <div class="sub-nodes">
+      <div class="sub-node">conversation_manager<br><small>step logic unchanged</small></div>
+      <div class="sub-node">docker_manager<br><small>unchanged</small></div>
+      <div class="sub-node">docker-watcher<br><small>unchanged</small></div>
+      <div class="sub-node">Ollama host:11434<br><small>phi3:mini</small></div>
+    </div>
+  </div>
+
+  <!-- PHASES -->
+  <h2>Implementation Phases</h2>
+  <div class="phases">
+    <div class="phase-card">
+      <div class="num">1</div>
+      <h4>Create Telegram Bot</h4>
+      <p>Open Telegram → message @BotFather → /newbot → get Bot Token</p>
+      <div class="file">Telegram App only · 2 min</div>
+    </div>
+    <div class="phase-card">
+      <div class="num">2</div>
+      <h4>Set Telegram Webhook in n8n</h4>
+      <p>Add Telegram credential in n8n using the Bot Token</p>
+      <div class="file">n8n UI only · 3 min</div>
+    </div>
+    <div class="phase-card">
+      <div class="num">3</div>
+      <h4>Replace Webhook Trigger</h4>
+      <p>Remove Webhook node → add Telegram Trigger node with bot credential</p>
+      <div class="file">n8n UI only · 3 min</div>
+    </div>
+    <div class="phase-card">
+      <div class="num">4</div>
+      <h4>Update Edit Fields</h4>
+      <p>Change session_id and message paths to Telegram's JSON structure</p>
+      <div class="file">n8n UI only · 2 min</div>
+    </div>
+    <div class="phase-card">
+      <div class="num">5</div>
+      <h4>Replace Reply Node</h4>
+      <p>Remove HTTP Request (Evolution) → add Telegram Send Message node</p>
+      <div class="file">n8n UI only · 3 min</div>
+    </div>
+    <div class="phase-card">
+      <div class="num">6</div>
+      <h4>Test End to End</h4>
+      <p>Send "." to bot → verify greeting appears → test add/remove flow</p>
+      <div class="file">No code changes · 5 min</div>
+    </div>
+  </div>
+
+  <!-- WHAT CHANGES -->
+  <h2>What Changes vs What Stays</h2>
+  <table>
+    <tr><th>Component</th><th>Change</th><th>Status</th></tr>
+    <tr><td>n8n Webhook Trigger node</td><td>Replaced by Telegram Trigger</td><td><span class="badge new">REPLACE</span></td></tr>
+    <tr><td>n8n Edit Fields node</td><td>Update path: <code>$json.message.chat.id</code> and <code>$json.message.text</code></td><td><span class="badge new">UPDATE</span></td></tr>
+    <tr><td>n8n HTTP Request (Evolution reply)</td><td>Replaced by Telegram Send Message node</td><td><span class="badge new">REPLACE</span></td></tr>
+    <tr><td>n8n docker-agent HTTP Request</td><td>Nothing</td><td><span class="badge same">UNTOUCHED</span></td></tr>
+    <tr><td>n8n Code in JavaScript node</td><td>Nothing</td><td><span class="badge same">UNTOUCHED</span></td></tr>
+    <tr><td>api.py</td><td>Nothing</td><td><span class="badge same">UNTOUCHED</span></td></tr>
+    <tr><td>conversation_manager.py</td><td>Nothing</td><td><span class="badge same">UNTOUCHED</span></td></tr>
+    <tr><td>docker_manager.py</td><td>Nothing</td><td><span class="badge same">UNTOUCHED</span></td></tr>
+    <tr><td>evolution-api container</td><td>Can be removed (optional)</td><td><span class="badge removed">OPTIONAL REMOVE</span></td></tr>
+    <tr><td>evolution-postgres container</td><td>Can be removed (optional)</td><td><span class="badge removed">OPTIONAL REMOVE</span></td></tr>
+  </table>
+
+  <!-- N8N WORKFLOW NODES -->
+  <h2>n8n Workflow — Node by Node</h2>
+  <table class="workflow-table">
+    <tr>
+      <th>Node</th>
+      <th>Type</th>
+      <th>Configuration</th>
+      <th>Role</th>
+    </tr>
+    <tr>
+      <td><span class="node-num">1</span>Telegram Trigger</td>
+      <td>Trigger</td>
+      <td>Credential: Telegram Bot Token<br>Updates: <code>message</code></td>
+      <td>Receives every message sent to the bot</td>
+    </tr>
+    <tr>
+      <td><span class="node-num">2</span>Edit Fields</td>
+      <td>Transform</td>
+      <td>
+        <code>session_id</code> = <code>{{ $json.message.chat.id }}</code><br>
+        <code>message</code> = <code>{{ $json.message.text }}</code>
+      </td>
+      <td>Extracts chat ID (session key) and message text</td>
+    </tr>
+    <tr>
+      <td><span class="node-num">3</span>HTTP Request<br><small>(docker-agent)</small></td>
+      <td>HTTP</td>
+      <td>
+        POST <code>http://docker-agent:8002/chat</code><br>
+        Body: <code>{"session_id":"...","message":"..."}</code>
+      </td>
+      <td>Sends message to conversation manager, gets reply</td>
+    </tr>
+    <tr>
+      <td><span class="node-num">4</span>Code in JavaScript</td>
+      <td>Code</td>
+      <td>Extracts <code>number</code> + <code>text</code> from response,<br>uses <code>JSON.stringify</code> to avoid newline issues</td>
+      <td>Prepares clean reply text and chat_id for Telegram</td>
+    </tr>
+    <tr>
+      <td><span class="node-num">5</span>Telegram<br><small>(Send Message)</small></td>
+      <td>Action</td>
+      <td>
+        Credential: same Bot Token<br>
+        Chat ID: <code>{{ $json.chat_id }}</code><br>
+        Text: <code>{{ $json.text }}</code>
+      </td>
+      <td>Sends the DockerAgent reply back to the user on Telegram</td>
+    </tr>
+  </table>
+
+  <!-- DATA STRUCTURE -->
+  <h2>Data Structure</h2>
+  <div class="data-flow">
+    <div class="data-card">
+      <div class="data-header">📥 Telegram → n8n (Trigger output)</div>
+      <pre>{
+  <span class="key">"message"</span>: {
+    <span class="key">"message_id"</span>: <span class="val">42</span>,
+    <span class="key">"chat"</span>: {
+      <span class="key">"id"</span>: <span class="val">123456789</span>,  <span class="comment">← session_id</span>
+      <span class="key">"type"</span>: <span class="str">"private"</span>
+    },
+    <span class="key">"from"</span>: {
+      <span class="key">"username"</span>: <span class="str">"omar"</span>
+    },
+    <span class="key">"text"</span>: <span class="str">"."</span>  <span class="comment">← message</span>
+  }
+}</pre>
+    </div>
+    <div class="data-card">
+      <div class="data-header">📤 docker-agent → Code node (response)</div>
+      <pre>{
+  <span class="key">"session_id"</span>: <span class="str">"123456789"</span>,
+  <span class="key">"reply"</span>: <span class="str">""</span>,
+  <span class="key">"next_question"</span>: <span class="str">"Hello! I'm DockerAgent..."</span>,
+  <span class="key">"action_taken"</span>: <span class="val">false</span>,
+  <span class="key">"text"</span>: <span class="str">"Hello! I'm DockerAgent.\nWhat do you want to do?\n → add / remove\n · list · status"</span>
+}</pre>
+    </div>
+    <div class="data-card">
+      <div class="data-header">🔧 Code node output (to Telegram)</div>
+      <pre>{
+  <span class="key">"chat_id"</span>: <span class="val">123456789</span>,
+  <span class="key">"text"</span>: <span class="str">"Hello! I'm DockerAgent.\nWhat do you want to do?..."</span>,
+  <span class="key">"body"</span>: <span class="str">"..."</span>  <span class="comment">← JSON.stringify result</span>
+}</pre>
+    </div>
+    <div class="data-card">
+      <div class="data-header">📨 Telegram Send Message body</div>
+      <pre>{
+  <span class="key">"chat_id"</span>: <span class="val">123456789</span>,
+  <span class="key">"text"</span>: <span class="str">"Hello! I'm DockerAgent.\nWhat do you want to do?\n → add / remove\n · list · status · reset · quit"</span>,
+  <span class="key">"parse_mode"</span>: <span class="str">"Markdown"</span>
+}</pre>
+    </div>
+  </div>
+
+  <!-- STEP BY STEP -->
+  <h2>Step-by-Step Implementation</h2>
+
+  <h3>Phase 1 — Create the Telegram Bot</h3>
+  <ul class="steps">
+    <li>
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <h5>Open Telegram and find @BotFather</h5>
+        <p>Search for <strong>@BotFather</strong> in Telegram → open chat → click Start</p>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <h5>Create new bot</h5>
+        <p>Send <code>/newbot</code> → enter a name (e.g. <strong>DockerAgent</strong>) → enter a username ending in "bot" (e.g. <strong>docker_ops_bot</strong>)</p>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <h5>Save the Bot Token</h5>
+        <p>BotFather replies with a token like: <code>7412638901:AAFxxxxxxxxxxxxxxxxxxxxxxxx</code>. Save this — you'll need it in n8n.</p>
+      </div>
+    </li>
+  </ul>
+
+  <h3>Phase 2 — Add Telegram Credential in n8n</h3>
+  <ul class="steps">
+    <li>
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <h5>Open n8n credentials</h5>
+        <p>Go to <code>http://localhost:5678</code> → top right → Credentials → Add Credential → search <strong>Telegram</strong></p>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <h5>Paste the Bot Token</h5>
+        <p>Paste the token from BotFather → Save. Name it <strong>"DockerAgent Bot"</strong></p>
+      </div>
+    </li>
+  </ul>
+
+  <h3>Phase 3 — Update n8n Workflow</h3>
+  <ul class="steps">
+    <li>
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <h5>Delete the Webhook trigger node</h5>
+        <p>Open the workflow editor → click Webhook node → Delete</p>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <h5>Add Telegram Trigger node</h5>
+        <p>Add node → search <strong>Telegram Trigger</strong> → select credential → set Updates to <code>message</code> → connect to Edit Fields</p>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <h5>Update Edit Fields node</h5>
+        <p>
+          Change <code>session_id</code> to: <code>{{ $json.message.chat.id }}</code><br>
+          Change <code>message</code> to: <code>{{ $json.message.text }}</code>
+        </p>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <h5>Update Code node</h5>
+        <p>Add <code>chat_id</code> to the Code node output so the Telegram reply node can use it</p>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <h5>Delete the last HTTP Request node (Evolution API)</h5>
+        <p>Click the last HTTP Request node (POST evolution-api) → Delete</p>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">6</div>
+      <div class="step-content">
+        <h5>Add Telegram Send Message node</h5>
+        <p>Add node → search <strong>Telegram</strong> → select <strong>Send Message</strong> action → credential: DockerAgent Bot → Chat ID: <code>{{ $json.chat_id }}</code> → Text: <code>{{ $json.text }}</code></p>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">7</div>
+      <div class="step-content">
+        <h5>Save and Publish</h5>
+        <p>Connect all nodes: <strong>Telegram Trigger → Edit Fields → docker-agent → Code → Telegram</strong> → Save → Publish</p>
+      </div>
+    </li>
+  </ul>
+
+  <h3>Phase 4 — Test</h3>
+  <ul class="steps">
+    <li>
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <h5>Find your bot on Telegram</h5>
+        <p>Search for your bot username (e.g. <code>@docker_ops_bot</code>) → open chat → click Start</p>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <h5>Send initial message</h5>
+        <p>Send <code>.</code> → expect: <em>"Hello! I'm DockerAgent. What do you want to do?"</em></p>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <h5>Test full add flow</h5>
+        <p>Reply <code>add</code> → follow the prompts (name → image → port → ...) → verify service appears in docker ps</p>
+      </div>
+    </li>
+  </ul>
+
+  <!-- CODE NODE UPDATE -->
+  <h2>Updated Code Node (JavaScript)</h2>
+  <div class="box blue">
+    <strong>Only the Code node changes slightly</strong> — add <code>chat_id</code> to the output so the Telegram node can use it.
+  </div>
+  <pre>const data = $input.first().json;
+const text = (data.text || data.next_question || '').trim();
+const chat_id = data.session_id || '';
+
+return [{
+  json: {
+    chat_id: chat_id,
+    text: text
+  }
+}];</pre>
+
+</div>
+
+<div class="footer">
+  <span>DockerAgent — Telegram Integration Plan · PFE Project</span>
+  <span>All local · Zero cost · Production ready</span>
+  <span>2026</span>
+</div>
+
+</body>
+</html>

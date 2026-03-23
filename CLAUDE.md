@@ -1,159 +1,61 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+PFE project: autonomous infrastructure remediation system. Docker-based, orchestrated from `monitoring/docker-compose.yml`.
 
-## Overview
-
-This is an **autonomous infrastructure remediation system** — a PFE (final-year project) that automatically detects, decides on, and executes remediation actions for infrastructure incidents. The system is entirely Docker-based and orchestrated from `monitoring/docker-compose.yml`.
-
-## Running the System
-
-All services run together via Docker Compose from the `monitoring/` directory:
-
+## Run
 ```bash
-cd monitoring
-cp .env.example .env          # then fill in ACTION_EXECUTOR_SECRET
-docker compose up -d
+cd monitoring && docker compose up -d
 ```
+Rebuild a service: `docker compose build <service> && docker compose up -d <service>`
 
-To rebuild a specific service after code changes:
-```bash
-docker compose build decision-engine && docker compose up -d decision-engine
-docker compose build action-executor && docker compose up -d action-executor
-docker compose build docker-watcher  && docker compose up -d docker-watcher
-```
+## Pipeline
+Prometheus → Alertmanager → n8n → `POST /decide` → decision-engine:8000 → n8n → `POST /execute` (JWT) → action-executor:8001 → `POST /execution-result` → decision-engine (Redis)
 
-To develop `decision-engine` locally (outside Docker):
-```bash
-cd decision-engine
-python -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-cd app
-uvicorn app:app --reload --port 8000
-```
+## Services
+| Service | Port |
+|---|---|
+| decision-engine | 8000 |
+| action-executor | 8001 |
+| docker-watcher | — (runs every 30s) |
+| n8n | 5678 |
+| Prometheus | 9090 |
+| Alertmanager | 9093 |
+| Grafana | 3000 |
+| redis-history | 6380 |
 
-**Required external Docker volumes** (create once before first `docker compose up`):
-```bash
-docker volume create n8n_data
-docker volume create pfe-monitoring_grafana_data
-```
+## Key Files
+- `decision-engine/app/rules.py` — `evaluate_rules()`, mutated at runtime by docker-watcher
+- `decision-engine/app/confidence.py` — +0.05/success, -0.15/failure over last 5 records
+- `decision-engine/app/history.py` — Redis LPUSH/LTRIM, 30 entries max, key=SHA256(`type:service`)
+- `action-executor/main.py` — `ACTION_MAP`, mutated at runtime, requires JWT (`ACTION_EXECUTOR_SECRET`)
+- `docker-watcher/watcher.py` — auto-discovers containers on `monitoring_default` network
 
-## Architecture
+## Safety Levels
+- `2` → manual approval in n8n
+- `3` → auto-execute if confidence ≥ 0.7
 
-### Alert → Decision → Action Pipeline
+## Add a New Rule
+1. `action-executor/main.py` → add to `ACTION_MAP`
+2. `decision-engine/app/rules.py` → add rule before fallback comment
+3. `monitoring/prometheus/rules/host-alerts.yml` → add alert rule
+4. `curl -X POST http://localhost:9090/-/reload`
 
-```
-Prometheus → Alertmanager → n8n (Workflow 1: Alert Intake)
-                                 ↓
-                            n8n (Workflow 2: Decision Orchestration)
-                                 ↓ POST /decide
-                            decision-engine:8000
-                                 ↓
-                            n8n (Workflow 3/4: Execution)
-                                 ↓ POST /execute (JWT-authenticated)
-                            action-executor:8001
-                                 ↓ POST /execution-result
-                            decision-engine:8000  (persist to Redis)
-```
-
-1. **Prometheus** scrapes metrics and fires alerts (configured in `monitoring/prometheus/`).
-2. **Alertmanager** routes all alerts as webhooks to n8n at `/webhook/prod/alerts/intake`.
-3. **n8n** (port 5678) orchestrates 4 workflows (JSON definitions in `workflows/`). Workflows are not auto-loaded — import them manually in the n8n UI.
-4. **decision-engine** (port 8000) receives `POST /decide` with an `IncidentInput`, applies static rules from `rules.py`, adjusts confidence using Redis history, and returns a `DecisionOutput`.
-5. **action-executor** (port 8001) receives `POST /execute` (requires JWT), maps action names to shell commands, and runs them via `subprocess`.
-6. After execution, n8n calls `POST /execution-result` on the decision-engine to persist the outcome in Redis (redis-history, port 6380).
-
-### Key Services
-
-| Service | Port | Description |
-|---|---|---|
-| decision-engine | 8000 | FastAPI — incident → decision logic |
-| action-executor | 8001 | FastAPI — executes remediation commands |
-| docker-watcher | — | Auto-discovers new containers every 30s |
-| n8n | 5678 | Workflow automation / orchestration |
-| Prometheus | 9090 | Metrics collection |
-| Alertmanager | 9093 | Alert routing |
-| Grafana | 3000 | Dashboards |
-| redis-history | 6380 | Stores decision history (separate from monitoring Redis) |
-
-### Decision Engine Internals (`decision-engine/app/`)
-
-- **`rules.py`** — Static `evaluate_rules()` function. Maps `(incident_type, service)` pairs to a `RuleResult` (action, base_confidence, safety_level, reason). **This file is mutated at runtime by docker-watcher** to add auto-discovered services.
-- **`confidence.py`** — `compute_confidence()` uses the last 5 history records: +0.05 per success, -0.15 per failure (clamped to [0.0, 1.0]).
-- **`history.py`** — Redis LPUSH/LTRIM strategy; stores at most 30 entries per `incident_key`. `incident_key` = SHA256(`incident_type:service`).
-- **`decision_engine.py`** — Ties it all together: rules → history → confidence → `DecisionOutput`.
-- **`models.py`** — Pydantic models: `IncidentInput` and `DecisionOutput`.
-
-### Safety Levels
-
-- `safety_level=2` → requires manual approval in n8n before executing
-- `safety_level=3` → auto-executes (confidence ≥ 0.7)
-
-### Action Executor (`action-executor/main.py`)
-
-The `ACTION_MAP` dict maps action string keys to shell commands. **This file is mutated at runtime by docker-watcher.** The `/execute` endpoint requires a JWT Bearer token signed with `ACTION_EXECUTOR_SECRET` (env var, set in `monitoring/.env`).
-
-### Auto-Discovery (`docker-watcher/watcher.py`)
-
-Runs every 30 seconds. Detects new containers on the `monitoring_default` Docker network that are not in `IGNORED_CONTAINERS` or `KNOWN_SERVICES`, then:
-1. Appends a rule block to `decision-engine/app/rules.py` (before the fallback marker)
-2. Appends an entry to `ACTION_MAP` in `action-executor/main.py`
-3. If the container has a `monitoring.port` label: adds a Prometheus blackbox scrape job and an alert rule, then reloads Prometheus via `POST /-/reload`
-
-To add a new service to auto-discovery, add these labels in `docker-compose.yml`:
+## Auto-Discovery Labels
 ```yaml
 labels:
   - "monitoring.port=8080"
-  - "monitoring.probe=http"   # or "tcp"
+  - "monitoring.probe=http"
 ```
-
-### Prometheus Alert Rules
-
-- **`monitoring/prometheus/rules/host-alerts.yml`** — Hand-written rules for known services (HostDown, DiskUsageHigh, RedisDown, RedisHistoryDown, RabbitMQDown, GatewayDown).
-- **`monitoring/prometheus/rules/auto-discovered.yml`** — Generated at runtime by docker-watcher for auto-discovered services.
-
-The `incident_type` naming convention used in Prometheus alert labels must match what `rules.py` expects: e.g., alert name `RedisDown` → `incident_type="RedisDown"` in the n8n payload.
-
-## Adding a New Manual Rule
-
-1. Add an entry to `ACTION_MAP` in `action-executor/main.py`
-2. Add a rule block in `decision-engine/app/rules.py` before the fallback comment
-3. Add a Prometheus alert rule in `monitoring/prometheus/rules/host-alerts.yml`
-4. Reload Prometheus: `curl -X POST http://localhost:9090/-/reload`
 
 ## DockerAgent (`agent/`)
+Conversational CLI/API for managing Docker Compose services.
+- `agent.py` — CLI
+- `api.py` — FastAPI on port 8002 (`POST /chat`, `POST /reset`, `GET /health`)
+- LLM: Ollama `phi3:mini` via `llm_client.py`
+- ADD flow: name→image→port→probe→restart→env→volumes→depends_on→command→confirm→execute
+- REMOVE flow: name→confirm→execute
 
-A conversational CLI (and HTTP API) for managing Docker Compose services interactively. It is separate from the monitoring pipeline and runs locally, not in Docker.
-
-**Two interfaces:**
-- `agent.py` — interactive CLI (run directly: `python agent.py`)
-- `api.py` — FastAPI HTTP wrapper on port 8002, designed for WhatsApp-style session-based chat (`POST /chat`, `POST /reset`, `GET /health`). Run with: `uvicorn api:app --host 0.0.0.0 --port 8002 --reload`
-
-**Setup (CPU-only):**
-```bash
-cd agent
-python -m venv venv && source venv/bin/activate
-pip install torch --index-url https://download.pytorch.org/whl/cpu
-pip install -r requirements.txt
-```
-
-**LLM backend:** Uses Ollama locally (`phi3:mini`) via `llm_client.py`. Requires `ollama serve` and `ollama pull phi3:mini`. The `DockerAgentSession` class manages multi-turn conversation history.
-
-**Conversation flow** (implemented as a step machine in `conversation_manager.py`):
-- ADD: name → image → host port → container port → probe → restart → env → volumes → depends_on → command → YAML preview + confirm → execute
-- REMOVE: service name → show locations found → confirm → execute + report
-
-**Internal modules:**
-- `conversation_manager.py` — `Step` enum and `ConversationManager` (state machine + validation)
-- `docker_manager.py` — builds service YAML blocks, runs `docker compose up`, waits for docker-watcher
-- `cleanup_manager.py` — removes a service from compose, rules.py, main.py, prometheus configs; restarts docker-watcher
-- `validator.py` — input validation (names, images, ports, etc.)
-- `llm_client.py` — Ollama HTTP client + `DockerAgentSession`
-
-When a service is added via DockerAgent, it waits 35 seconds for docker-watcher to auto-register it, then reloads Prometheus — so the full monitoring pipeline activates automatically.
-
-## Environment
-
-- `ACTION_EXECUTOR_SECRET` — shared JWT secret between n8n and action-executor. Set in `monitoring/.env`.
-- `REDIS_URL` — used by decision-engine, defaults to `redis://redis-history:6379/0`.
-- `PROMETHEUS_URL` — used by docker-watcher, defaults to `http://prometheus:9090`.
+## Env Vars
+- `ACTION_EXECUTOR_SECRET` — JWT secret, set in `monitoring/.env`
+- `REDIS_URL` — defaults to `redis://redis-history:6379/0`
+- `PROMETHEUS_URL` — defaults to `http://prometheus:9090`

@@ -20,7 +20,7 @@ ACTION_MAP = {
     "restart_test_agent":         ["docker", "restart", "test-agent"],
     "restart_evolution_postgres":         ["docker", "restart", "evolution-postgres"],
     "restart_evolution_api":         ["docker", "restart", "evolution-api"],
-    "restart_rana":         ["docker", "restart", "rana"],
+    "restart_ngrok":         ["docker", "restart", "ngrok"],
 }
 
 

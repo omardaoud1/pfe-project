@@ -143,11 +143,11 @@ def evaluate_rules(incident_type: str, service: str, severity: str) -> RuleResul
         )
 
     # --------------------
-    # rana down (auto-discovered)
+    # ngrok down (auto-discovered)
     # --------------------
-    if incident_type == "RanaDown" and service == "rana":
+    if incident_type == "NgrokDown" and service == "ngrok":
         return RuleResult(
-            action="restart_rana",
+            action="restart_ngrok",
             action_params={},
             base_confidence=0.3,
             safety_level=2,
