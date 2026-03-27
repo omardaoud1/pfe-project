@@ -58,3 +58,35 @@ scrape_configs:
         replacement: blackbox_exporter:9115
       - source_labels: [__param_target]
         target_label: instance
+
+  # auto-discovered: my-omar
+  - job_name: "blackbox_my-omar"
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+        - http://my-omar:80
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - target_label: __address__
+        replacement: blackbox_exporter:9115
+      - source_labels: [__param_target]
+        target_label: instance
+
+  # auto-discovered: firas
+  - job_name: "blackbox_firas"
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+        - http://firas:80
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - target_label: __address__
+        replacement: blackbox_exporter:9115
+      - source_labels: [__param_target]
+        target_label: instance

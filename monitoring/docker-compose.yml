@@ -102,6 +102,17 @@ services:
     - WEBHOOK_URL=https://${NGROK_DOMAIN}
     extra_hosts:
     - host.docker.internal:host-gateway
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: ngrok
+    command: http n8n:5678 --domain=${NGROK_DOMAIN}
+    environment:
+    - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    ports:
+    - 4040:4040
+    restart: unless-stopped
+    depends_on:
+    - n8n
   decision-engine:
     build: ../decision-engine
     container_name: decision-engine
@@ -139,6 +150,8 @@ services:
     - ./prometheus/rules:/monitoring/prometheus/rules
     environment:
     - PROMETHEUS_URL=http://prometheus:9090
+    - SLACK_USER_TOKEN=${SLACK_USER_TOKEN}
+    - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
     restart: unless-stopped
     depends_on:
     - prometheus
@@ -167,17 +180,26 @@ services:
     - monitoring.port=80
     - monitoring.probe=http
     restart: unless-stopped
-  ngrok:
-    image: ngrok/ngrok:latest
-    container_name: ngrok
-    command: http n8n:5678 --url=${NGROK_DOMAIN}
-    environment:
-    - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+  my-omar:
+    image: nginx:latest
+    container_name: my-omar
     ports:
-    - 4040:4040
+    - 7310:80
+    labels:
+    - monitoring.port=80
+    - monitoring.probe=http
     restart: unless-stopped
-    depends_on:
-    - n8n
+
+  firas:
+    image: nginx:latest
+    container_name: firas
+    ports:
+    - 6542:80
+    labels:
+    - monitoring.port=80
+    - monitoring.probe=http
+    restart: unless-stopped
+
 volumes:
   n8n_data:
     external: true
