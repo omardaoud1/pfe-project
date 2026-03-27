@@ -15,10 +15,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        0,
-        0
+        -416,
+        96
       ],
-      "id": "10fab639-5d58-408c-95b7-771db5d35d7b",
+      "id": "eaddf198-44f8-4632-8b03-93e677d5e2cb",
       "name": "PROD – Alertmanager Intake",
       "webhookId": "db9adb75-ac74-4064-a255-9d1a180bb39a"
     },
@@ -59,10 +59,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        208,
-        0
+        -208,
+        96
       ],
-      "id": "b29672be-9c56-45af-9e61-1e769d175304",
+      "id": "4889a08b-8671-428d-97d0-72579db4d02b",
       "name": "Validate Alert"
     },
     {
@@ -106,10 +106,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        416,
-        -96
+        0,
+        0
       ],
-      "id": "fea60324-55ad-43c7-8e0c-a6466f243239",
+      "id": "627f7bae-6524-4b2c-96e2-bba82cfdc125",
       "name": "Normalize Incident"
     },
     {
@@ -133,10 +133,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
       "position": [
-        624,
-        -96
+        208,
+        0
       ],
-      "id": "1cdf669f-3760-4733-a459-53281c2c6385",
+      "id": "4a0db22b-2f09-419a-b724-8c939d4f4c26",
       "name": "Forward Incident"
     }
   ],
@@ -181,7 +181,7 @@
     "executionOrder": "v1",
     "availableInMCP": false
   },
-  "versionId": "d9bbdcac-6558-47ed-86e4-047a56babe3d",
+  "versionId": "5ba22840-3198-4029-8cc5-6cecd2de5973",
   "meta": {
     "instanceId": "550c9b25708f97d5ede5d8bc17a0f9f166bd90e8652782284824d451446c7bbc"
   },

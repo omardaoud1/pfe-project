@@ -1,15 +1,5 @@
 # DockerAgent — local dependencies (CPU-only, no GPU required)
 
-# LLM inference — CPU-only torch (avoids ~3GB of useless NVIDIA CUDA packages)
-# Install torch separately with:
-#   pip install torch --index-url https://download.pytorch.org/whl/cpu
-torch>=2.0.0
-
-# HuggingFace stack — loads and runs the fine-tuned Phi-3-mini model
-transformers>=4.40.0
-peft>=0.10.0        # LoRA adapter support
-accelerate>=0.27.0  # device_map and model loading utilities
-
 # Docker Compose file manipulation
 pyyaml>=6.0
 

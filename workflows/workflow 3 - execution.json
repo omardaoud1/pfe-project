@@ -15,10 +15,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        0,
-        0
+        -800,
+        128
       ],
-      "id": "ee45941f-234c-4e22-a82f-de0ee3b51156",
+      "id": "4f0f02eb-f89a-4ad7-b2fd-645220c60859",
       "name": "Decision Receiver",
       "webhookId": "986b0a9d-d811-47ef-99d5-db11b11957dd"
     },
@@ -60,10 +60,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        208,
-        0
+        -592,
+        128
       ],
-      "id": "b7329500-b948-49ab-b7f5-c7e1a4f9525b",
+      "id": "c9bd167d-1d33-4c8f-8fd9-44da2b09725d",
       "name": "Validate_action"
     },
     {
@@ -87,10 +87,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
       "position": [
-        800,
-        -128
+        0,
+        0
       ],
-      "id": "55929109-800f-4590-a065-3ef73d0c27d9",
+      "id": "6153edfe-c467-4297-bfcc-7451167d0c2d",
       "name": "Auto_Execution"
     },
     {
@@ -136,10 +136,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
       "position": [
-        1104,
-        -128
+        304,
+        0
       ],
-      "id": "c7179262-2849-4cb7-9086-0477cd07cebb",
+      "id": "996f7aac-b58f-42c7-a81d-42f75f63abfb",
       "name": "Report_Execution_Result"
     },
     {
@@ -156,10 +156,10 @@
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.4,
       "position": [
-        1392,
-        0
+        592,
+        128
       ],
-      "id": "83a5fce3-8f55-420f-9866-9d697cbed663",
+      "id": "0992503b-b2fe-446c-9b9a-1b88db8147dd",
       "name": "Send-Result",
       "webhookId": "f114225c-62f0-43df-be28-7a61e50e8714",
       "retryOnFail": false,
@@ -198,10 +198,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        448,
-        -64
+        -352,
+        64
       ],
-      "id": "0835025e-e5c0-4559-af7d-6771c17c0424",
+      "id": "ccec1ae7-37b5-4ea0-ad89-1949d4f2f193",
       "name": "Check_Safety_Level"
     },
     {
@@ -213,10 +213,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        736,
-        144
+        -64,
+        272
       ],
-      "id": "5e33dbbc-1a20-438b-b9fa-a1fa356430c1",
+      "id": "f0b396f6-e6cc-4310-8cf6-50302a01c1db",
       "name": "clean data"
     },
     {
@@ -233,10 +233,10 @@
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.4,
       "position": [
-        944,
-        144
+        144,
+        272
       ],
-      "id": "e8783673-2cb9-49e4-94f7-0d750a29d969",
+      "id": "7e9483e7-228f-47e1-b886-c6dbd9f6b6f9",
       "name": "Send a message",
       "webhookId": "a6a0b7ca-f3d9-4a89-afdd-c4dbc693cb89",
       "credentials": {
@@ -328,7 +328,7 @@
     "executionOrder": "v1",
     "availableInMCP": false
   },
-  "versionId": "9f9a6be9-3029-4058-a37c-7923510b55d4",
+  "versionId": "cd36f4ec-d60e-468c-884d-4d0388e1f1ec",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "550c9b25708f97d5ede5d8bc17a0f9f166bd90e8652782284824d451446c7bbc"

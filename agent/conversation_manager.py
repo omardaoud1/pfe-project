@@ -12,6 +12,55 @@ import re
 import validator
 
 
+# Well-known container port for each image base name.
+# Key = image name without tag/registry, value = default internal port.
+KNOWN_IMAGE_PORTS: dict[str, int] = {
+    "redis":         6379,
+    "postgres":      5432,
+    "postgresql":    5432,
+    "mysql":         3306,
+    "mariadb":       3306,
+    "mongo":         27017,
+    "mongodb":       27017,
+    "rabbitmq":      5672,
+    "nginx":         80,
+    "apache":        80,
+    "httpd":         80,
+    "elasticsearch": 9200,
+    "kibana":        5601,
+    "grafana":       3000,
+    "prometheus":    9090,
+    "memcached":     11211,
+    "cassandra":     9042,
+    "zookeeper":     2181,
+    "kafka":         9092,
+    "influxdb":      8086,
+    "minio":         9000,
+    "vault":         8200,
+    "consul":        8500,
+    "jenkins":       8080,
+    "sonarqube":     9000,
+    "wordpress":     80,
+    "drupal":        80,
+    "joomla":        80,
+    "traefik":       80,
+    "haproxy":       80,
+    "node":          3000,
+    "python":        8000,
+    "golang":        8080,
+    "php":           80,
+    "tomcat":        8080,
+    "wildfly":       8080,
+}
+
+
+def _known_port(image: str) -> int | None:
+    """Return the well-known container port for an image, or None if unknown."""
+    # Strip registry prefix and tag: "docker.io/library/redis:7" → "redis"
+    base = image.split("/")[-1].split(":")[0].lower()
+    return KNOWN_IMAGE_PORTS.get(base)
+
+
 class Step(Enum):
     ASK_INTENT         = auto()
     ADD_ASK_NAME       = auto()
@@ -32,20 +81,20 @@ class Step(Enum):
 
 
 QUESTIONS = {
-    Step.ASK_INTENT:         "Hello! I'm DockerAgent.\nWhat do you want to do?\n  → add / remove\n  · list · status · reset · quit",
-    Step.ADD_ASK_NAME:       "Service name?",
-    Step.ADD_ASK_IMAGE:      "Docker image? (e.g. nginx:latest, redis:7)",
-    Step.ADD_ASK_PORT:           "Host port? (exposed on the host, e.g. 8082)",
-    Step.ADD_ASK_CONTAINER_PORT: "Container port? (what the service listens on inside Docker, e.g. 80) [Enter = same as host port]",
-    Step.ADD_ASK_PROBE:          "Monitoring probe type? (http / tcp) [Enter = http]",
-    Step.ADD_ASK_RESTART:    "Restart policy? (always / unless-stopped / on-failure / no) [Enter = unless-stopped]",
-    Step.ADD_ASK_ENV:        "Environment variables? (e.g. KEY=VALUE,KEY2=VALUE2) [Enter to skip]",
-    Step.ADD_ASK_VOLUMES:    "Volumes? (e.g. /host/path:/container/path) [Enter to skip]",
-    Step.ADD_ASK_DEPENDS:    "Depends on which service? (e.g. redis, rabbitmq) [Enter to skip]",
-    Step.ADD_ASK_COMMAND:    "Custom command/entrypoint? [Enter to skip]",
-    Step.ADD_CONFIRM:        "Confirm and apply? (yes / no / cancel)",
+    Step.ASK_INTENT:         "Hello! I'm DockerAgent.\nWhat do you want to do?\n  add  —  add a new service\n  remove  —  remove a service\n  list  —  show all services\n  status  —  show container status\n  reset  —  restart conversation",
+    Step.ADD_ASK_NAME:       "Service name?\n(lowercase letters, digits, hyphens — e.g. my-api)",
+    Step.ADD_ASK_IMAGE:      "Docker image?\n(must include a tag — e.g. nginx:latest, redis:7)",
+    Step.ADD_ASK_PORT:           "Host port?\n(port exposed on the host — e.g. 8082)",
+    Step.ADD_ASK_CONTAINER_PORT: "Container port?\n(port the service listens on inside Docker — e.g. 80)\nType 'skip' to use the same as host port.",
+    Step.ADD_ASK_PROBE:          "Monitoring probe type?\n  http  or  tcp\nType 'skip' for default (http).",
+    Step.ADD_ASK_RESTART:    "Restart policy?\n  always / unless-stopped / on-failure / no\nType 'skip' for default (unless-stopped).",
+    Step.ADD_ASK_ENV:        "Environment variables?\n(e.g. KEY=VALUE,KEY2=VALUE2)\nType 'skip' if none.",
+    Step.ADD_ASK_VOLUMES:    "Volumes?\n(e.g. /host/path:/container/path)\nType 'skip' if none.",
+    Step.ADD_ASK_DEPENDS:    "Depends on which service?\n(e.g. redis, rabbitmq)\nType 'skip' if none.",
+    Step.ADD_ASK_COMMAND:    "Custom command / entrypoint?\nType 'skip' if none.",
+    Step.ADD_CONFIRM:        "Confirm and apply?\n  yes  —  deploy the service\n  no   —  change the config\n  cancel  —  abort",
     Step.REMOVE_ASK_NAME:    "Which service do you want to remove?",
-    Step.REMOVE_ASK_CONFIRM: "Are you sure? This will stop the container and remove it from all config files. (yes / no)",
+    Step.REMOVE_ASK_CONFIRM: "Are you sure?\nThis will stop the container and remove it from all config files.\n  yes  —  confirm removal\n  no   —  cancel",
 }
 
 
@@ -71,6 +120,21 @@ class ConversationManager:
         self.remove_locations = {}
 
     def current_question(self) -> str:
+        if self.step == Step.ADD_ASK_CONTAINER_PORT and self.service_info.image:
+            known = _known_port(self.service_info.image)
+            image_base = self.service_info.image.split("/")[-1].split(":")[0]
+            if known:
+                return (
+                    f"Container port?\n"
+                    f"'{image_base}' listens on port {known} by default.\n"
+                    f"Type {known} or 'skip' to use {known} (recommended)."
+                )
+            else:
+                return (
+                    f"Container port?\n"
+                    f"(unknown image — enter the port your app listens on inside Docker)\n"
+                    f"Type 'skip' to use the same as host port."
+                )
         return QUESTIONS.get(self.step, "")
 
     def process(self, user_input: str) -> tuple:
@@ -145,15 +209,37 @@ class ConversationManager:
 
         # ── ADD: container port ─────────────────────────────────────────
         elif self.step == Step.ADD_ASK_CONTAINER_PORT:
+            known = _known_port(self.service_info.image)
+            image_base = self.service_info.image.split("/")[-1].split(":")[0]
+
             if skip:
-                self.service_info.container_port = self.service_info.port
+                # For known images, always use the correct default port
+                if known:
+                    self.service_info.container_port = known
+                else:
+                    self.service_info.container_port = self.service_info.port
             elif val.isdigit():
                 cport = int(val)
                 if cport < 1 or cport > 65535:
                     return self.step, "Container port must be between 1 and 65535."
+                # Validate against known image port
+                if known and cport != known:
+                    return self.step, (
+                        f"Wrong port for '{image_base}' — port {cport} won't work.\n"
+                        f"'{image_base}' listens on port {known} inside the container.\n"
+                        f"Use {known} as the container port, or your service won't appear in monitoring.\n"
+                        f"Type {known} or 'skip' to use the correct default."
+                    )
+                if not known:
+                    # Unknown image — accept the port but warn
+                    self.service_info.container_port = cport
+                    self.step = Step.ADD_ASK_PROBE
+                    # Return None so the warning appears via the question, not an error.
+                    # We store a one-time notice in the step question override below.
+                    return self.step, None
                 self.service_info.container_port = cport
             else:
-                return self.step, "Container port must be a number (e.g. 80). Press Enter to use the same as host port."
+                return self.step, "Container port must be a number (e.g. 80). Type 'skip' to use the image default."
             self.step = Step.ADD_ASK_PROBE
             return self.step, None
 
@@ -171,12 +257,15 @@ class ConversationManager:
         # ── ADD: restart policy ─────────────────────────────────────────
         elif self.step == Step.ADD_ASK_RESTART:
             valid = ("always", "unless-stopped", "on-failure", "no")
+            aliases = {"unless-stoped": "unless-stopped", "onfailure": "on-failure", "on_failure": "on-failure"}
             if skip:
                 self.service_info.restart = "unless-stopped"
-            elif val.lower() in valid:
-                self.service_info.restart = val.lower()
             else:
-                return self.step, f"Invalid restart policy. Choose from: {', '.join(valid)}. Or press Enter for default (unless-stopped)."
+                v = aliases.get(val.lower(), val.lower())
+                if v in valid:
+                    self.service_info.restart = v
+                else:
+                    return self.step, f"Invalid restart policy. Choose from: {', '.join(valid)}. Type 'skip' for default (unless-stopped)."
             self.step = Step.ADD_ASK_ENV
             return self.step, None
 

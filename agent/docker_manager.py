@@ -179,7 +179,7 @@ def get_status() -> str:
     Shows container name, status, and ports for all services.
     """
     result = subprocess.run(
-        ["docker", "compose", "ps"],
+        ["docker", "compose", "ps", "-a"],
         cwd=COMPOSE_DIR,
         capture_output=True,
         text=True,

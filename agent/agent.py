@@ -65,7 +65,7 @@ def show_yaml_preview(info) -> str:
     )
     lines = [
         "┌─────────────────────────────────────────┐",
-        "│         Service YAML Preview             │",
+        "│         Service YAML Preview            │",
         "└─────────────────────────────────────────┘",
     ]
     for line in block_yaml.splitlines():
