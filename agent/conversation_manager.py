@@ -78,10 +78,14 @@ class Step(Enum):
     REMOVE_ASK_NAME    = auto()
     REMOVE_ASK_CONFIRM = auto()
     READY_TO_REMOVE    = auto()
+    # ── Log Analysis ─────────────────────────────────────────────────────────
+    LOGS_ASK_SERVICE   = auto()   # ask which service to analyze
+    LOGS_ASK_TAIL      = auto()   # ask how many lines (optional)
+    READY_TO_ANALYZE   = auto()   # trigger analysis in api.py
 
 
 QUESTIONS = {
-    Step.ASK_INTENT:         "Hello! I'm DockerAgent.\nWhat do you want to do?\n  add  —  add a new service\n  remove  —  remove a service\n  list  —  show all services\n  status  —  show container status\n  reset  —  restart conversation",
+    Step.ASK_INTENT:         "Hello! I'm your Docker Agent 🐳\nWhat would you like to do?\n(Type *help* to see all available options)",
     Step.ADD_ASK_NAME:       "Service name?\n(lowercase letters, digits, hyphens — e.g. my-api)",
     Step.ADD_ASK_IMAGE:      "Docker image?\n(must include a tag — e.g. nginx:latest, redis:7)",
     Step.ADD_ASK_PORT:           "Host port?\n(port exposed on the host — e.g. 8082)",
@@ -95,7 +99,15 @@ QUESTIONS = {
     Step.ADD_CONFIRM:        "Confirm and apply?\n  yes  —  deploy the service\n  no   —  change the config\n  cancel  —  abort",
     Step.REMOVE_ASK_NAME:    "Which service do you want to remove?",
     Step.REMOVE_ASK_CONFIRM: "Are you sure?\nThis will stop the container and remove it from all config files.\n  yes  —  confirm removal\n  no   —  cancel",
+    Step.LOGS_ASK_SERVICE:   "Which service do you want to analyze?\n(e.g. nginx, redis, postgres)\nType 'list' to see running containers.",
+    Step.LOGS_ASK_TAIL:      "How many log lines to analyze?\n(e.g. 100, 200, 500)\nType 'skip' for default (100).",
 }
+
+
+@dataclass
+class LogRequest:
+    service: str = ""
+    tail:    int = 100
 
 
 @dataclass
@@ -118,6 +130,7 @@ class ConversationManager:
         self.service_info     = ServiceInfo()
         self.remove_target    = ""
         self.remove_locations = {}
+        self.log_request      = LogRequest()
 
     def current_question(self) -> str:
         if self.step == Step.ADD_ASK_CONTAINER_PORT and self.service_info.image:
@@ -148,13 +161,25 @@ class ConversationManager:
 
         # ── Intent ──────────────────────────────────────────────────────
         if self.step == Step.ASK_INTENT:
-            if "add" in val.lower():
+            low = val.lower()
+            if "add" in low:
                 self.step = Step.ADD_ASK_NAME
-            elif "remove" in val.lower() or "delete" in val.lower():
+            elif "remove" in low or "delete" in low:
                 self.step = Step.REMOVE_ASK_NAME
+            elif self._is_log_intent(low):
+                # Smart: if service name given inline, skip LOGS_ASK_SERVICE
+                service = self._extract_service_from_log_intent(low)
+                tail    = self._extract_tail_from_log_intent(low)
+                if service:
+                    self.log_request.service = service
+                    self.log_request.tail    = tail
+                    self.step = Step.READY_TO_ANALYZE
+                else:
+                    self.log_request = LogRequest()
+                    self.step = Step.LOGS_ASK_SERVICE
             else:
-                # any unrecognized input → stay on ASK_INTENT, return greeting
-                return self.step, None
+                # unrecognized input → hint to use help
+                return self.step, "I didn't understand that. Type *help* to see what I can do, or just tell me what you need."
             return self.step, None
 
         # ── ADD: name ───────────────────────────────────────────────────
@@ -352,7 +377,105 @@ class ConversationManager:
                 return self.step, "Removal cancelled."
             return self.step, None
 
+        # ── LOGS: ask service ────────────────────────────────────────────
+        elif self.step == Step.LOGS_ASK_SERVICE:
+            if not val:
+                return self.step, "Please enter a service name (e.g. nginx, redis)."
+            tail    = self._extract_tail_from_log_intent(val.lower())
+            service = self._extract_service_from_log_intent(val.lower())
+            # If extraction returned nothing (user typed just the bare name), use raw
+            if not service:
+                service = re.sub(r'\b(last\s+)?\d+\s*(lines?|logs?)?\b', '', val, flags=re.IGNORECASE).strip() or val.strip()
+            self.log_request.service = service
+            self.log_request.tail    = tail
+            self.step = Step.LOGS_ASK_TAIL
+            return self.step, None
+
+        # ── LOGS: ask tail ───────────────────────────────────────────────
+        elif self.step == Step.LOGS_ASK_TAIL:
+            if skip:
+                self.log_request.tail = 100
+            elif val.isdigit():
+                n = int(val)
+                if n < 10 or n > 2000:
+                    return self.step, "Please enter a number between 10 and 2000. Type 'skip' for default (100)."
+                self.log_request.tail = n
+            else:
+                return self.step, "Please enter a number (e.g. 100, 200). Type 'skip' for default (100)."
+            self.step = Step.READY_TO_ANALYZE
+            return self.step, None
+
         return self.step, None
+
+    # ── Log-intent helpers ───────────────────────────────────────────────────
+
+    _LOG_KEYWORDS = re.compile(
+        r'\b(log[s]?|analys[ie]s?|analyz[ei]|failing|broken|crash(?:ing)?|errors?|'
+        r'why is|check logs?|what.s wrong|debug|diagnos[ei]s?|investigate|'
+        r'check|inspect|monitor|trace|troubleshoot|not working|not start(?:ing)?|'
+        r'keeps? (crashing|failing|restarting)|is (down|broken|failing)|'
+        r'what.s? happening|what.s? going on|what.s? wrong|what.s? up with|'
+        r'happening|issue|problem|broken|slow|stuck|hanging|unreachable)\b',
+        re.IGNORECASE,
+    )
+
+    def _is_log_intent(self, text: str) -> bool:
+        return bool(self._LOG_KEYWORDS.search(text))
+
+    # Common service name words to skip when extracting service from intent message
+    _LOG_NOISE = re.compile(
+        r'\b(log[s]?|analys[ie]s?|analyz[ei]|of|for|the|a|an|last|lines?|'
+        r'give me|show me|can you|please|i want|i need|to see|'
+        r'why is|what.s wrong|what.s? happening|what.s? going|what.s? up|'
+        r'what|going|on|happening|wrong|up|with|about|'
+        r'check|debug|diagnos[ei]s?|investigate|inspect|monitor|trace|troubleshoot|'
+        r'failing|broken|crash(?:ing)?|errors?|not working|not start(?:ing)?|'
+        r'keeps?|is|are|my|service|issue|problem|slow|stuck|hanging)\b',
+        re.IGNORECASE,
+    )
+
+    # Words that are never a container name — used in the fallback only
+    _NOISE_WORDS = {
+        'log', 'logs', 'analyze', 'analysis', 'analyses', 'check', 'of', 'for',
+        'the', 'a', 'an', 'give', 'me', 'show', 'can', 'you', 'please', 'want',
+        'need', 'see', 'why', 'is', 'are', 'what', 'going', 'on', 'happening',
+        'wrong', 'up', 'with', 'about', 'debug', 'diagnose', 'investigate',
+        'inspect', 'monitor', 'trace', 'failing', 'broken', 'crashing', 'errors',
+        'error', 'working', 'starting', 'keeps', 'service', 'issue', 'problem',
+        'slow', 'stuck', 'hanging', 'okay', 'ok', 'look', 'last', 'lines', 'line',
+        'get', 'fetch', 'pull', 'its', 'it', 'in', 'at', 'do', 'not', 'my', 'your',
+    }
+
+    def _extract_service_from_log_intent(self, text: str) -> str:
+        """Try to extract a service name from a free-form log intent message."""
+        # First: match against actual containers (running + stopped) by exact substring
+        try:
+            import log_analyzer as _la
+            known = _la.list_services()
+            text_lower = text.lower()
+            # Longest match first so 'my-redis-cache' beats 'redis'
+            for svc in sorted(known, key=len, reverse=True):
+                if svc.lower() in text_lower:
+                    return svc
+        except Exception:
+            pass
+        # Fallback: split on spaces (preserves hyphenated names like "my-omar"),
+        # discard pure noise words, keep first valid container-name token.
+        tokens = re.sub(r'\b\d+\b', '', text.lower()).split()
+        candidates = [
+            t for t in tokens
+            if re.match(r'^[a-z0-9][a-z0-9_-]*$', t) and t not in self._NOISE_WORDS
+        ]
+        return candidates[0] if candidates else ""
+
+    def _extract_tail_from_log_intent(self, text: str) -> int:
+        """Extract a line count from message like 'last 200 lines'. Default 100."""
+        m = re.search(r'\b(\d+)\s*(lines?)?\b', text)
+        if m:
+            n = int(m.group(1))
+            if 10 <= n <= 2000:
+                return n
+        return 100
 
     def reset(self):
         self.__init__()

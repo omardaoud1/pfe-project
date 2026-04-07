@@ -21,8 +21,6 @@ ACTION_MAP = {
     "restart_evolution_postgres":         ["docker", "restart", "evolution-postgres"],
     "restart_evolution_api":         ["docker", "restart", "evolution-api"],
     "restart_ngrok":         ["docker", "restart", "ngrok"],
-    "restart_my_omar":         ["docker", "restart", "my-omar"],
-    "restart_firas":         ["docker", "restart", "firas"],
 }
 
 

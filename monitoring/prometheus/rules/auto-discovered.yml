@@ -11,23 +11,3 @@ groups:
     annotations:
       summary: "test-agent is down"
       description: "Auto-discovered service test-agent probe failed"
-
-  - alert: MyomarDown
-    expr: probe_success{job="blackbox_my-omar"} == 0
-    for: 10s
-    labels:
-      severity: critical
-      service: my-omar
-    annotations:
-      summary: "my-omar is down"
-      description: "Auto-discovered service my-omar probe failed"
-
-  - alert: FirasDown
-    expr: probe_success{job="blackbox_firas"} == 0
-    for: 10s
-    labels:
-      severity: critical
-      service: firas
-    annotations:
-      summary: "firas is down"
-      description: "Auto-discovered service firas probe failed"

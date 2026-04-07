@@ -12,3 +12,6 @@ uvicorn>=0.29.0
 
 # Type validation
 pydantic>=2.0.0
+
+# Docker SDK — used by log_analyzer.py and health_reporter.py
+docker>=7.0.0

@@ -1,7 +1,7 @@
 import hashlib
 import importlib
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 import rules as _rules_module
 from models import IncidentInput, DecisionOutput
@@ -99,6 +99,6 @@ def make_decision(incident: IncidentInput) -> DecisionOutput:
         safety_level=final_safety_level,
         confidence=final_confidence,
         reason=rule_result.reason,
-        decided_at=datetime.utcnow(),
+        decided_at=datetime.now(timezone.utc).astimezone(),
         history_used=history_used,
     )

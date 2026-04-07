@@ -15,12 +15,13 @@ Usage:
     print(session.chat("use nginx:alpine"))
 """
 
+import os
 import requests
 
 # ---------------------------------------------------------------------------
 # Ollama config
 # ---------------------------------------------------------------------------
-OLLAMA_URL  = "http://localhost:11434/api/chat"
+OLLAMA_URL  = os.getenv("OLLAMA_URL", "http://host.docker.internal:11434/api/chat")
 OLLAMA_MODEL = "phi3:mini"
 
 # ---------------------------------------------------------------------------

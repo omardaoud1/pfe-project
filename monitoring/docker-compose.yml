@@ -122,6 +122,7 @@ services:
     - ../decision-engine/app:/app
     environment:
     - REDIS_URL=redis://redis-history:6379/0
+    - TZ=Africa/Tunis
     depends_on:
     - prometheus
     - alertmanager
@@ -150,8 +151,13 @@ services:
     - ./prometheus/rules:/monitoring/prometheus/rules
     environment:
     - PROMETHEUS_URL=http://prometheus:9090
+    - OLLAMA_URL=http://host.docker.internal:11434/api/chat
     - SLACK_USER_TOKEN=${SLACK_USER_TOKEN}
     - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
+    - TZ=Africa/Tunis
+    - GRAFANA_URL=http://localhost:3000
+    extra_hosts:
+    - host.docker.internal:host-gateway
     restart: unless-stopped
     depends_on:
     - prometheus
@@ -180,26 +186,6 @@ services:
     - monitoring.port=80
     - monitoring.probe=http
     restart: unless-stopped
-  my-omar:
-    image: nginx:latest
-    container_name: my-omar
-    ports:
-    - 7310:80
-    labels:
-    - monitoring.port=80
-    - monitoring.probe=http
-    restart: unless-stopped
-
-  firas:
-    image: nginx:latest
-    container_name: firas
-    ports:
-    - 6542:80
-    labels:
-    - monitoring.port=80
-    - monitoring.probe=http
-    restart: unless-stopped
-
 volumes:
   n8n_data:
     external: true

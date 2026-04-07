@@ -2,7 +2,7 @@ import json
 import os
 import redis
 from typing import List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 import logging
 
@@ -106,7 +106,7 @@ def save_decision(
         "confidence": confidence,
         "safety_level": safety_level,
         "success": success,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).astimezone().isoformat(),
     }
 
     key = _redis_key(incident_key)

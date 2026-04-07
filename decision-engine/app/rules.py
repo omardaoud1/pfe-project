@@ -153,30 +153,6 @@ def evaluate_rules(incident_type: str, service: str, severity: str) -> RuleResul
             safety_level=2,
             reason="Auto-discovered service — low confidence baseline"
         )
-
-    # --------------------
-    # my-omar down (auto-discovered)
-    # --------------------
-    if incident_type == "MyomarDown" and service == "my-omar":
-        return RuleResult(
-            action="restart_my_omar",
-            action_params={},
-            base_confidence=0.3,
-            safety_level=2,
-            reason="Auto-discovered service — low confidence baseline"
-        )
-
-    # --------------------
-    # firas down (auto-discovered)
-    # --------------------
-    if incident_type == "FirasDown" and service == "firas":
-        return RuleResult(
-            action="restart_firas",
-            action_params={},
-            base_confidence=0.3,
-            safety_level=2,
-            reason="Auto-discovered service — low confidence baseline"
-        )
     # --------------------
     # Fallback (unknown incident)
     # --------------------
