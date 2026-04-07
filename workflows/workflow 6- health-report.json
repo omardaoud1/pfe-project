@@ -1,0 +1,103 @@
+{
+  "name": "workflow 6- health-report",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "7ec64846-f9d3-4faf-b918-c053b3b823ac",
+      "name": "Daily 8AM Cron"
+    },
+    {
+      "parameters": {
+        "url": "http://docker-agent:8002/health-report",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "6f4805ed-4d48-4f48-a196-25ebe93df7f9",
+      "name": "Get Health Report"
+    },
+    {
+      "parameters": {
+        "select": "user",
+        "user": {
+          "__rl": true,
+          "value": "U095VL5UPKL",
+          "mode": "id"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        416,
+        0
+      ],
+      "id": "0baae81f-6905-4678-99d4-a432bb7d3bd3",
+      "name": "Send to Slack",
+      "webhookId": "8744617e-4f72-451d-bbf9-c4dfaeee5f12",
+      "credentials": {
+        "slackApi": {
+          "id": "731AsEBCeBbQ6caf",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily 8AM Cron": {
+      "main": [
+        [
+          {
+            "node": "Get Health Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Health Report": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "72a834db-9db8-4a73-9beb-451cdbb6af02",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "550c9b25708f97d5ede5d8bc17a0f9f166bd90e8652782284824d451446c7bbc"
+  },
+  "id": "U3jwR6EvvHEhb8oY6jwnc",
+  "tags": []
+}
