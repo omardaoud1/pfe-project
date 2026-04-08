@@ -1,115 +1,195 @@
-version: "3.8"
-
 services:
   prometheus:
     image: prom/prometheus
     container_name: prometheus
+    command:
+    - --config.file=/etc/prometheus/prometheus.yml
+    - --web.enable-lifecycle
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./prometheus/rules:/etc/prometheus/rules
+    - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    - ./prometheus/rules:/etc/prometheus/rules
     ports:
-      - "9090:9090"
-
+    - 9090:9090
   alertmanager:
     image: prom/alertmanager
     container_name: alertmanager
     volumes:
-      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
     ports:
-      - "9093:9093"
-
+    - 9093:9093
   grafana:
     image: grafana/grafana
     container_name: grafana
     ports:
-      - "3000:3000"
+    - 3000:3000
     volumes:
-      - grafana_data:/var/lib/grafana
+    - grafana_data:/var/lib/grafana
   node_exporter:
     image: prom/node-exporter
     container_name: node_exporter
     ports:
-      - "9100:9100"
+    - 9100:9100
   redis:
     image: redis:7
     container_name: redis
     ports:
-      - "6379:6379"
+    - 6379:6379
   redis_exporter:
     image: oliver006/redis_exporter
     container_name: redis_exporter
     environment:
-      - REDIS_ADDR=redis://redis:6379
+    - REDIS_ADDR=redis://redis:6379
     ports:
-      - "9121:9121"
+    - 9121:9121
+  redis_history_exporter:
+    image: oliver006/redis_exporter
+    container_name: redis_history_exporter
+    environment:
+    - REDIS_ADDR=redis://redis-history:6379
+    ports:
+    - 9122:9121
+    depends_on:
+    - redis-history
+  redis-history:
+    image: redis:7
+    container_name: redis-history
+    ports:
+    - 6380:6379
+    volumes:
+    - redis_history_data:/data
+    command: redis-server --save 60 1 --loglevel warning
+    restart: unless-stopped
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
     ports:
-      - "5672:5672"
-      - "15672:15672"
+    - 5672:5672
+    - 15672:15672
   rabbitmq_exporter:
     image: kbudde/rabbitmq-exporter
     container_name: rabbitmq_exporter
     environment:
-      - RABBIT_URL=http://rabbitmq:15672
-      - RABBIT_USER=guest
-      - RABBIT_PASSWORD=guest
+    - RABBIT_URL=http://rabbitmq:15672
+    - RABBIT_USER=guest
+    - RABBIT_PASSWORD=guest
     ports:
-      - "9419:9419"
-
+    - 9419:9419
   blackbox_exporter:
     image: prom/blackbox-exporter
     container_name: blackbox_exporter
     ports:
-      - "9115:9115"
+    - 9115:9115
     volumes:
-      - ./exporters/blackbox.yml:/etc/blackbox_exporter/config.yml
+    - ./exporters/blackbox.yml:/etc/blackbox_exporter/config.yml
     command:
-      - "--config.file=/etc/blackbox_exporter/config.yml"
-
+    - --config.file=/etc/blackbox_exporter/config.yml
   gateway:
     image: nginx:alpine
     container_name: gateway
     ports:
-      - "8080:80"
-
+    - 8080:80
   n8n:
     image: n8nio/n8n
     container_name: n8n
     ports:
-      - "5678:5678"
+    - 5678:5678
     volumes:
-      - n8n_data:/home/node/.n8n
+    - n8n_data:/home/node/.n8n
     environment:
-      - N8N_HOST=n8n
-      - N8N_PORT=5678
-      - N8N_PROTOCOL=http
-
+    - N8N_HOST=n8n
+    - N8N_PORT=5678
+    - N8N_PROTOCOL=http
+    - WEBHOOK_URL=https://${NGROK_DOMAIN}
+    extra_hosts:
+    - host.docker.internal:host-gateway
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: ngrok
+    command: http n8n:5678 --domain=${NGROK_DOMAIN}
+    environment:
+    - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    ports:
+    - 4040:4040
+    restart: unless-stopped
+    depends_on:
+    - n8n
   decision-engine:
     build: ../decision-engine
     container_name: decision-engine
     ports:
-      - "8000:8000"
+    - 8000:8000
     volumes:
-      - ../decision-engine/app:/app
+    - ../decision-engine/app:/app
+    environment:
+    - REDIS_URL=redis://redis-history:6379/0
+    - TZ=Africa/Tunis
     depends_on:
-      - prometheus
-      - alertmanager
-
+    - prometheus
+    - alertmanager
+    - redis-history
   action-executor:
     build: ../action-executor
     container_name: action-executor
     ports:
-      - "8001:8001"
+    - 8001:8001
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+    - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+    - ACTION_EXECUTOR_SECRET=${ACTION_EXECUTOR_SECRET}
     restart: unless-stopped
-
-
+  docker-agent:
+    build: ../agent
+    container_name: docker-agent
+    ports:
+    - 8002:8002
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    - ./docker-compose.yml:/monitoring/docker-compose.yml
+    - ../decision-engine/app/rules.py:/decision-engine/app/rules.py
+    - ../action-executor/main.py:/action-executor/main.py
+    - ./prometheus/prometheus.yml:/monitoring/prometheus/prometheus.yml
+    - ./prometheus/rules:/monitoring/prometheus/rules
+    environment:
+    - PROMETHEUS_URL=http://prometheus:9090
+    - OLLAMA_URL=http://host.docker.internal:11434/api/chat
+    - SLACK_USER_TOKEN=${SLACK_USER_TOKEN}
+    - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
+    - TZ=Africa/Tunis
+    - GRAFANA_URL=http://localhost:3000
+    extra_hosts:
+    - host.docker.internal:host-gateway
+    restart: unless-stopped
+    depends_on:
+    - prometheus
+  docker-watcher:
+    build: ../docker-watcher
+    container_name: docker-watcher
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    - ../decision-engine/app/rules.py:/rules/rules.py
+    - ../action-executor/main.py:/action/main.py
+    - ./prometheus/prometheus.yml:/prometheus/prometheus.yml
+    - ./prometheus/rules:/prometheus/rules
+    environment:
+    - PROMETHEUS_URL=http://prometheus:9090
+    restart: unless-stopped
+    depends_on:
+    - decision-engine
+    - action-executor
+    - prometheus
+  test-agent:
+    image: nginx:latest
+    container_name: test-agent
+    ports:
+    - 5665:80
+    labels:
+    - monitoring.port=80
+    - monitoring.probe=http
+    restart: unless-stopped
 volumes:
   n8n_data:
-    external: true 
+    external: true
   grafana_data:
     external: true
     name: pfe-monitoring_grafana_data
+  redis_history_data: null

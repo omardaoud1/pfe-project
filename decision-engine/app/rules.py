@@ -37,7 +37,7 @@ def evaluate_rules(incident_type: str, service: str, severity: str) -> RuleResul
     # --------------------
     # Disk usage high
     # --------------------
-    if incident_type == "DiskHigh":
+    if incident_type == "DiskUsageHigh":
         return RuleResult(
             action="cleanup_disk",
             action_params={},
@@ -56,6 +56,18 @@ def evaluate_rules(incident_type: str, service: str, severity: str) -> RuleResul
             base_confidence=0.7,
             safety_level=3,
             reason="Redis service is down"
+        )
+
+    # --------------------
+    # Redis History down
+    # --------------------
+    if incident_type == "RedisHistoryDown" and service == "redis-history":
+        return RuleResult(
+            action="restart_redis_history",
+            action_params={},
+            base_confidence=0.9,
+            safety_level=3,
+            reason="Redis History service is down — auto-restart to restore confidence learning"
         )
 
     # --------------------
@@ -83,6 +95,65 @@ def evaluate_rules(incident_type: str, service: str, severity: str) -> RuleResul
         )
 
     # --------------------
+    # test-agent down (auto-discovered)
+    # --------------------
+    if incident_type == "TestagentDown" and service == "test-agent":
+        return RuleResult(
+            action="restart_test_agent",
+            action_params={},
+            base_confidence=0.3,
+            safety_level=2,
+            reason="Auto-discovered service — low confidence baseline"
+        )
+
+    # --------------------
+    # docker-agent down (auto-discovered)
+    # --------------------
+    if incident_type == "DockeragentDown" and service == "docker-agent":
+        return RuleResult(
+            action="restart_docker_agent",
+            action_params={},
+            base_confidence=0.3,
+            safety_level=2,
+            reason="Auto-discovered service — low confidence baseline"
+        )
+
+    # --------------------
+    # evolution-postgres down (auto-discovered)
+    # --------------------
+    if incident_type == "EvolutionpostgresDown" and service == "evolution-postgres":
+        return RuleResult(
+            action="restart_evolution_postgres",
+            action_params={},
+            base_confidence=0.3,
+            safety_level=2,
+            reason="Auto-discovered service — low confidence baseline"
+        )
+
+    # --------------------
+    # evolution-api down (auto-discovered)
+    # --------------------
+    if incident_type == "EvolutionapiDown" and service == "evolution-api":
+        return RuleResult(
+            action="restart_evolution_api",
+            action_params={},
+            base_confidence=0.3,
+            safety_level=2,
+            reason="Auto-discovered service — low confidence baseline"
+        )
+
+    # --------------------
+    # ngrok down (auto-discovered)
+    # --------------------
+    if incident_type == "NgrokDown" and service == "ngrok":
+        return RuleResult(
+            action="restart_ngrok",
+            action_params={},
+            base_confidence=0.3,
+            safety_level=2,
+            reason="Auto-discovered service — low confidence baseline"
+        )
+    # --------------------
     # Fallback (unknown incident)
     # --------------------
     return RuleResult(
@@ -92,4 +163,3 @@ def evaluate_rules(incident_type: str, service: str, severity: str) -> RuleResul
         safety_level=2,
         reason="No matching rule for this incident"
     )
-

@@ -1,0 +1,17 @@
+# DockerAgent — local dependencies (CPU-only, no GPU required)
+
+# Docker Compose file manipulation
+pyyaml>=6.0
+
+# HTTP requests — used by cleanup_manager to reload Prometheus
+requests>=2.31.0
+
+# HTTP API wrapper (api.py — Step 7)
+fastapi>=0.110.0
+uvicorn>=0.29.0
+
+# Type validation
+pydantic>=2.0.0
+
+# Docker SDK — used by log_analyzer.py and health_reporter.py
+docker>=7.0.0

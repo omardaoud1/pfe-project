@@ -1,0 +1,281 @@
+{
+  "name": "Workflow 5 - WhatsApp DockerAgent",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "docker-agent-slack",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        1024,
+        272
+      ],
+      "id": "0f40e1bf-e304-41aa-b353-462da5b46e79",
+      "name": "Webhook",
+      "webhookId": "593f3aef-790f-4a33-944b-80b8fc3928d5"
+    },
+    {
+      "parameters": {
+        "select": "user",
+        "user": {
+          "__rl": true,
+          "value": "U095VL5UPKL",
+          "mode": "id"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        2160,
+        240
+      ],
+      "id": "d3168f5e-e4ad-4486-9037-575eace294d7",
+      "name": "Send a message",
+      "webhookId": "46f4af24-6b1d-4e24-8da5-453bfb9e515f",
+      "credentials": {
+        "slackApi": {
+          "id": "731AsEBCeBbQ6caf",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1440,
+        272
+      ],
+      "id": "24fe6b4e-862e-4fdb-937e-4955cc88fce4",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "7813f933-f40f-4078-8218-15951c2247fd",
+              "leftValue": "={{ $json.text }}",
+              "rightValue": "Goodbye",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2368,
+        272
+      ],
+      "id": "a40f1e1d-22d1-49b2-a94b-d98197ddb389",
+      "name": "detect quit"
+    },
+    {
+      "parameters": {
+        "jsCode": "const channel = $node[\"Extract Fields\"].json[\"channel\"];\nconst token = \"REDACTED\";\n\nconst hist = await this.helpers.httpRequest({\n  method: \"GET\",\n  url: `https://slack.com/api/conversations.history?channel=${channel}&limit=200`,\n  headers: { Authorization: `Bearer ${token}` }\n});\n\nfor (const msg of hist.messages || []) {\n  try {\n    await this.helpers.httpRequest({\n      method: \"POST\",\n      url: \"https://slack.com/api/chat.delete\",\n      headers: {\n        Authorization: `Bearer ${token}`,\n        \"Content-Type\": \"application/json\"\n      },\n      body: { channel, ts: msg.ts }\n    });\n  } catch(e) {}\n}\n\nreturn [{ json: { done: true } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2688,
+        240
+      ],
+      "id": "bc6f8ab0-cf7a-4ab2-8e77-2775e62bc363",
+      "name": "delete all messages"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst body = item.body !== undefined ? item.body : item;\n\nif (body.type === 'url_verification') {\n  return [{ json: { challenge: body.challenge } }];\n}\n\nif (!body.event || body.event.bot_id) {\n  return [];\n}\n\nreturn [{\n  json: {\n    session_id: body.event.user   || '',\n    message:    body.event.text   || '',\n    channel_id:    body.event.channel || '',\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1232,
+        272
+      ],
+      "id": "90e7dcce-b170-4f9a-a10e-40a01ce7f50d",
+      "name": "Parse Slack Event"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "6a02dda2-30df-4452-88f5-825d61d5aa72",
+              "leftValue": "={{ $json.session_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1648,
+        272
+      ],
+      "id": "f946e44c-1075-47ab-9a1d-e6e259ae37fe",
+      "name": "Valid Message?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://docker-agent:8002/chat",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "session_id",
+              "value": "={{ $json.session_id }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "channel_id",
+              "value": "={{ $json.channel_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1920,
+        240
+      ],
+      "id": "d00eece7-c1da-48ca-8eaa-b20462d38cae",
+      "name": "DockerAgent API"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Slack Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        [
+          {
+            "node": "Valid Message?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "detect quit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "detect quit": {
+      "main": [
+        [
+          {
+            "node": "delete all messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Slack Event": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid Message?": {
+      "main": [
+        [
+          {
+            "node": "DockerAgent API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DockerAgent API": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "e6a5f210-d921-40e3-96eb-7bb5b2edcbf3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "550c9b25708f97d5ede5d8bc17a0f9f166bd90e8652782284824d451446c7bbc"
+  },
+  "id": "dNr4X4CGsI7iSV5zbU6dU",
+  "tags": []
+}

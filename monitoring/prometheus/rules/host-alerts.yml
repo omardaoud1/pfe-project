@@ -18,7 +18,7 @@ groups:
       summary: "Disk usage is high"
       description: "Root filesystem has less than 20% free space"
   - alert: RedisDown
-    expr: redis_up == 0
+    expr: redis_up{job="redis_exporter"} == 0
     for: 10s
     labels:
       severity: critical
@@ -26,6 +26,17 @@ groups:
     annotations:
       summary: "Redis is down"
       description: "Redis exporter reports Redis is not reachable"
+
+  - alert: RedisHistoryDown
+    expr: redis_up{job="redis_history_exporter"} == 0
+    for: 10s
+    labels:
+      severity: warning
+      service: redis-history
+    annotations:
+      summary: "Redis History is down"
+      description: "Decision history is unavailable. Engine is running on base confidence values only."
+
   - alert: RabbitMQDown
     expr: rabbitmq_up == 0
     for: 10s
@@ -47,7 +58,7 @@ groups:
       description: "Queue has more than 100 messages"
 
   - alert: GatewayDown
-    expr: probe_success == 0
+    expr: probe_success{job="blackbox_http"} == 0
     for: 10s
     labels:
       severity: critical

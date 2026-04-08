@@ -1,0 +1,13 @@
+groups:
+- name: auto-discovered-alerts
+  rules:
+
+  - alert: TestagentDown
+    expr: probe_success{job="blackbox_test-agent"} == 0
+    for: 10s
+    labels:
+      severity: critical
+      service: test-agent
+    annotations:
+      summary: "test-agent is down"
+      description: "Auto-discovered service test-agent probe failed"

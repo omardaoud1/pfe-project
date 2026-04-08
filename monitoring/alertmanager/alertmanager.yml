@@ -1,11 +1,16 @@
 global:
-  resolve_timeout: 5m
+  resolve_timeout: 30s
 
 route:
   receiver: "n8n"
+  group_by: ['alertname', 'service']
+  group_wait: 10s
+  group_interval: 30s
+  repeat_interval: 1h
 
 receivers:
   - name: "n8n"
     webhook_configs:
       - url: "http://n8n:5678/webhook/prod/alerts/intake"
+        send_resolved: false
 
